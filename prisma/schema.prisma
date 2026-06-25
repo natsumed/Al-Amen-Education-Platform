@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums removed — SQLite uses plain String fields
+// TypeScript string literal unions in src/types/index.ts provide type safety
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String?
+  phone         String?
+  fullName      String
+  role          String    @default("STUDENT")
+  avatarUrl     String?
+  googleId      String?   @unique
+  emailVerified DateTime?
+  resetToken    String?
+  resetTokenExp DateTime?
+  isBanned      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  subscriptions          Subscription[]
+  payments               Payment[]
+  reviews                Review[]
+  progress               Progress[]
+  parentLinks            ParentLink[]          @relation("Parent")
+  studentLinks           ParentLink[]          @relation("Student")
+  manualActivations      ManualActivationLog[] @relation("Admin")
+  activatedSubscriptions ManualActivationLog[] @relation("TargetUser")
+  uploadedContent        Content[]             @relation("UploadedBy")
+  purchases              Purchase[]
+}
+
+model Subscription {
+  id        String   @id @default(uuid())
+  userId    String
+  plan      String
+  status    String   @default("ACTIVE")
+  startDate DateTime @default(now())
+  endDate   DateTime
+  autoRenew Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status, endDate])
+}
+
+model Payment {
+  id             String   @id @default(uuid())
+  userId         String
+  amount         Float
+  currency       String   @default("TND")
+  provider       String
+  status         String   @default("PENDING")
+  transactionRef String?
+  itemType       String
+  itemId         String?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([transactionRef])
+}
+
+model Content {
+  id            String   @id @default(uuid())
+  titleAr       String
+  titleFr       String
+  descriptionAr String?
+  descriptionFr String?
+  grade         String
+  subject       String
+  contentType   String
+  isFree        Boolean  @default(true)
+  price         Float?
+  thumbnailUrl  String?
+  youtubeUrl    String?
+  pdfUrl        String?
+  gifUrl        String?
+  fileUrls      String   @default("[]")
+  status        String   @default("PUBLISHED")
+  uploadedById  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  uploadedBy User      @relation("UploadedBy", fields: [uploadedById], references: [id])
+  reviews    Review[]
+  progress   Progress[]
+  purchases  Purchase[]
+
+  @@index([grade, subject])
+  @@index([contentType])
+  @@index([status])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  contentId String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId])
+}
+
+model Progress {
+  id              String   @id @default(uuid())
+  userId          String
+  contentId       String
+  completed       Boolean  @default(false)
+  progressPercent Int      @default(0)
+  lastAccessed    DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId])
+}
+
+model ParentLink {
+  id        String   @id @default(uuid())
+  parentId  String
+  studentId String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+
+  parent  User @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
+  student User @relation("Student", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+}
+
+model Purchase {
+  id        String   @id @default(uuid())
+  userId    String
+  contentId String
+  createdAt DateTime @default(now())
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId])
+  @@index([userId])
+}
+
+model ManualActivationLog {
+  id           String   @id @default(uuid())
+  adminId      String
+  targetUserId String
+  plan         String
+  durationDays Int
+  reason       String?
+  createdAt    DateTime @default(now())
+
+  admin      User @relation("Admin", fields: [adminId], references: [id])
+  targetUser User @relation("TargetUser", fields: [targetUserId], references: [id])
+}
