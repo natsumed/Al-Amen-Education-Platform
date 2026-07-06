@@ -48,9 +48,25 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginInput) => {
     setLoading(true)
     try {
+      // Check rate limit before attempting login
+      const limitRes = await fetch(`/api/auth/login-status?email=${encodeURIComponent(data.email)}`)
+      const limitData = await limitRes.json()
+      if (limitData.blocked) {
+        toast.error(isAr ? "تم حظر تسجيل الدخول مؤقتاً. حاول مرة أخرى بعد 5 دقائق." : "Connexion temporairement bloquée. Réessayez dans 5 minutes.")
+        setLoading(false)
+        return
+      }
+
       const result = await signIn("credentials", { ...data, redirect: false })
       if (result?.error) {
-        toast.error(isAr ? "البريد الإلكتروني أو كلمة المرور غير صحيحة" : "Email ou mot de passe incorrect")
+        const remaining = Math.max(0, (limitData.remaining ?? 5) - 1)
+        if (remaining > 0) {
+          toast.error(isAr
+            ? `البريد الإلكتروني أو كلمة المرور غير صحيحة. ${remaining} محاولات متبقية.`
+            : `Email ou mot de passe incorrect. ${remaining} tentative(s) restante(s).`)
+        } else {
+          toast.error(isAr ? "تم حظر تسجيل الدخول مؤقتاً. حاول مرة أخرى بعد 5 دقائق." : "Connexion temporairement bloquée. Réessayez dans 5 minutes.")
+        }
       } else {
         toast.success(isAr ? "تم تسجيل الدخول بنجاح!" : "Connexion réussie!")
         await fetchUserRoleAndRedirect()

@@ -3,13 +3,16 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Lock, Download, Play, BookOpen, ArrowLeft, Star, Clock, Eye, Globe, FileText, Film, Zap, ChevronRight, Share2 } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Lock, Download, Play, BookOpen, ArrowLeft, Star, Clock, Eye, Globe, FileText, Film, Zap, ChevronRight, Share2, LogOut, User } from "lucide-react"
 import { contentTypeLabel, gradeLabel, getYouTubeId } from "@/lib/utils"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useLanguage } from "@/providers/language-provider"
@@ -28,6 +31,8 @@ export default function ContentDetailPage() {
   const { user } = useCurrentUser()
   const { language, setLanguage } = useLanguage()
   const isAr = language === "ar"
+  const initials = user?.name?.split(" ")?.map((n: string) => n[0])?.join("")?.toUpperCase() || "U"
+  const dashboardUrl = user ? `/${user.role?.toLowerCase()}` : "/login"
   const [content, setContent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [reviews, setReviews] = useState<any[]>([])
@@ -126,7 +131,34 @@ export default function ContentDetailPage() {
               {isAr ? "FR" : "عربي"}
             </Button>
             {user ? (
-              <Link href={`/${user.role.toLowerCase()}`}><Button size="sm">{isAr ? "مساحتي" : "Mon espace"}</Button></Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={user?.image || ""} alt={user?.name || ""} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="font-medium">{user?.name}</div>
+                    <div className="text-xs text-muted-foreground">{user?.email}</div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href={dashboardUrl}>
+                      <User className="h-4 w-4 mr-2" />
+                      {isAr ? "مساحتي" : "Mon espace"}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive cursor-pointer" onClick={() => signOut({ callbackUrl: "/" })}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    {isAr ? "تسجيل الخروج" : "Se déconnecter"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Link href="/login"><Button variant="outline" size="sm">{isAr ? "دخول" : "Connexion"}</Button></Link>
             )}

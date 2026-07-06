@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google"
 import bcrypt from "bcryptjs"
 import { prisma } from "./prisma"
 import type { Role } from "@/types"
+import { loginLimiter } from "./rate-limit"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET,
@@ -24,8 +25,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       authorize: async (credentials) => {
         if (!credentials?.email || !credentials?.password) return null
 
+        // Rate limiting check
+        const email = credentials.email as string
+        const limit = loginLimiter.check(email)
+        if (!limit.allowed) {
+          throw new Error("Too many login attempts. Please try again later.")
+        }
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
         })
 
         if (!user || !user.passwordHash) return null
@@ -37,6 +45,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         )
 
         if (!isValid) return null
+
+        // Reset rate limit on successful login
+        loginLimiter.reset(email)
 
         return {
           id: user.id,

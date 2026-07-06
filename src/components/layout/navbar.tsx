@@ -16,7 +16,7 @@ export function Navbar() {
   const { user } = useCurrentUser()
   const { language, setLanguage } = useLanguage()
   const isAr = language === "ar"
-  const initials = user?.name?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "U"
+  const initials = user?.name?.split(" ")?.map((n: string) => n[0])?.join("")?.toUpperCase() || "U"
 
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-6">

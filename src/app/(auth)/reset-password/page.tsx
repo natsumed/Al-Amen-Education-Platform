@@ -18,7 +18,10 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams()
   const token = searchParams.get("token") || ""
   const [loading, setLoading] = useState(false)
-  const { register, handleSubmit, formState: { errors } } = useForm<ResetPasswordInput>({ resolver: zodResolver(resetPasswordSchema) })
+  const { register, handleSubmit, formState: { errors } } = useForm<ResetPasswordInput>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { token, password: "", confirmPassword: "" },
+  })
 
   const onSubmit = async (data: ResetPasswordInput) => {
     setLoading(true)

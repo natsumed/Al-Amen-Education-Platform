@@ -2,11 +2,15 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useLanguage } from "@/providers/language-provider"
-import { BookOpen, Video, Zap, Users, ChevronRight, Shield, Download, Globe, GraduationCap, Sparkles } from "lucide-react"
+import { useCurrentUser } from "@/hooks/use-current-user"
+import { BookOpen, Video, Zap, Users, ChevronRight, Shield, Download, Globe, GraduationCap, Sparkles, LogOut, User } from "lucide-react"
 
 const FEATURES = [
   { icon: Video, titleFr: "Cours vidéo", titleAr: "دروس فيديو", descFr: "Des centaines de cours vidéo pour toutes les matières du primaire.", descAr: "مئات الدروس المصورة لجميع مواد التعليم الابتدائي." },
@@ -19,7 +23,10 @@ const FEATURES = [
 
 export default function HomePage() {
   const { language, setLanguage } = useLanguage()
+  const { user } = useCurrentUser()
   const isAr = language === "ar"
+  const initials = user?.name?.split(" ")?.map((n: string) => n[0])?.join("")?.toUpperCase() || "U"
+  const dashboardUrl = user ? `/${user.role?.toLowerCase()}` : "/login"
 
   return (
     <div className="min-h-screen bg-background" dir={isAr ? "rtl" : "ltr"}>
@@ -51,15 +58,48 @@ export default function HomePage() {
             <Link href="/pricing">
               <Button variant="ghost" size="sm">{isAr ? "الأسعار" : "Tarifs"}</Button>
             </Link>
-            <Link href="/login">
-              <Button variant="outline" size="sm">{isAr ? "دخول" : "Connexion"}</Button>
-            </Link>
-            <Link href="/register">
-              <Button size="sm" className="gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                {isAr ? "تسجيل" : "S'inscrire"}
-              </Button>
-            </Link>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={user?.image || ""} alt={user?.name || ""} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="font-medium">{user?.name}</div>
+                    <div className="text-xs text-muted-foreground">{user?.email}</div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href={dashboardUrl}>
+                      <User className="h-4 w-4 mr-2" />
+                      {isAr ? "مساحتي" : "Mon espace"}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive cursor-pointer" onClick={() => signOut({ callbackUrl: "/" })}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    {isAr ? "تسجيل الخروج" : "Se déconnecter"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="outline" size="sm">{isAr ? "دخول" : "Connexion"}</Button>
+                </Link>
+                <Link href="/register">
+                  <Button size="sm" className="gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {isAr ? "تسجيل" : "S'inscrire"}
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
