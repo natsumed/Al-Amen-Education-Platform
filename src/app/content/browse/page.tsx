@@ -61,12 +61,10 @@ export default function BrowsePage() {
       <nav className="border-b bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center text-white font-bold shadow-sm">
-              {isAr ? "أ" : "A"}
-            </div>
+            <img src="/images/logo.jpeg" alt="Amenallah Edition" className="w-9 h-9 rounded-xl object-cover shadow-sm" />
             <div className="flex flex-col">
-              <span className="font-bold text-lg leading-tight">{isAr ? "الأمان" : "Al-Amân"}</span>
-              <span className="text-[10px] text-muted-foreground leading-tight hidden sm:block">{isAr ? "دارالأمان للنشر" : "Éditions Al-Amân"}</span>
+              <span className="font-bold text-lg leading-tight">{isAr ? "أمان الله" : "Amenallah"}</span>
+              <span className="text-[10px] text-muted-foreground leading-tight hidden sm:block">{isAr ? "أمان الله للنشر و التوزيع" : "Amenallah Edition"}</span>
             </div>
           </Link>
           <div className="flex items-center gap-2">
@@ -211,7 +209,7 @@ export default function BrowsePage() {
       {/* Footer */}
       <footer className="border-t py-8 bg-muted/30 mt-12">
         <div className="container text-center text-sm text-muted-foreground">
-          <p>© 2024 {isAr ? "دارالأمان للنشر" : "Éditions Al-Amân"}. {isAr ? "جميع الحقوق محفوظة." : "Tous droits réservés."}</p>
+          <p>© 2024 {isAr ? "أمان الله للنشر و التوزيع" : "Amenallah Edition"}. {isAr ? "جميع الحقوق محفوظة." : "Tous droits réservés."}</p>
         </div>
       </footer>
     </div>

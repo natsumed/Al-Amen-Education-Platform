@@ -13,12 +13,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen flex flex-col" dir={isAr ? "rtl" : "ltr"}>
       <div className="flex items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
-            {isAr ? "أ" : "A"}
-          </div>
+          <img src="/images/logo.jpeg" alt="Amenallah Edition" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-primary/20" />
           <div className="flex flex-col">
-            <span className="font-bold text-lg leading-tight">{isAr ? "الأمان" : "Al-Amân"}</span>
-            <span className="text-[10px] text-muted-foreground leading-tight">{isAr ? "دارالأمان للنشر" : "Éditions Al-Amân"}</span>
+            <span className="font-bold text-lg leading-tight">{isAr ? "أمان الله" : "Amenallah"}</span>
+            <span className="text-[10px] text-muted-foreground leading-tight">{isAr ? "أمان الله للنشر و التوزيع" : "Amenallah Edition"}</span>
           </div>
         </Link>
         <Button
@@ -37,7 +35,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       </div>
       <div className="text-center py-4 text-xs text-muted-foreground">
-        © 2024 {isAr ? "دارالأمان للنشر" : "Éditions Al-Amân"}. {isAr ? "جميع الحقوق محفوظة." : "Tous droits réservés."}
+        © 2024 {isAr ? "أمان الله للنشر و التوزيع" : "Amenallah Edition"}. {isAr ? "جميع الحقوق محفوظة." : "Tous droits réservés."}
       </div>
     </div>
   )

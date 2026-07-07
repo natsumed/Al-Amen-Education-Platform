@@ -33,7 +33,7 @@ export default function PricingPage() {
       <nav className="border-b bg-white/80 sticky top-0 z-50">
         <div className="container flex h-16 items-center gap-3">
           <Link href="/"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
-          <span className="font-bold text-xl">{isAr ? "الأمان" : "Al-Amân"}</span>
+          <span className="font-bold text-xl">{isAr ? "أمان الله" : "Amenallah"}</span>
         </div>
       </nav>
       <main className="container py-16">

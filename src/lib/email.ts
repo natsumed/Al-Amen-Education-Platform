@@ -3,7 +3,7 @@ import { Resend } from "resend"
 const RESEND_KEY = process.env.RESEND_API_KEY
 const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null
 const FROM = process.env.RESEND_FROM_EMAIL ?? "noreply@edutunisia.tn"
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Al-Amân"
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Amenallah Edition"
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
 export async function sendWelcomeEmail(to: string, name: string) {
@@ -15,11 +15,11 @@ export async function sendWelcomeEmail(to: string, name: string) {
       subject: `Bienvenue sur ${APP_NAME} / مرحباً بك في ${APP_NAME}`,
       html: `
         <div dir="ltr" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #2563eb;">${APP_NAME}</h1>
+          <h1 style="color: #2040e0;">${APP_NAME}</h1>
           <p>Bonjour ${name},</p>
           <p>Bienvenue sur ${APP_NAME}! Votre compte a été créé avec succès.</p>
           <p>Commencez à explorer nos cours et ressources pédagogiques.</p>
-          <a href="${APP_URL}/login" style="background:#2563eb;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:16px;">
+          <a href="${APP_URL}/login" style="background:#2040e0;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:16px;">
             Se connecter
           </a>
           <hr style="margin: 32px 0; border: none; border-top: 1px solid #e2e8f0;">
@@ -49,10 +49,10 @@ export async function sendPasswordResetEmail(
       subject: `Réinitialisation du mot de passe — ${APP_NAME}`,
       html: `
         <div dir="ltr" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #2563eb;">${APP_NAME}</h1>
+          <h1 style="color: #2040e0;">${APP_NAME}</h1>
           <p>Bonjour ${name},</p>
           <p>Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le lien ci-dessous (valide 1 heure):</p>
-          <a href="${resetUrl}" style="background:#2563eb;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:16px;">
+          <a href="${resetUrl}" style="background:#2040e0;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:16px;">
             Réinitialiser le mot de passe
           </a>
           <p style="margin-top: 16px; color: #64748b; font-size: 14px;">
@@ -85,11 +85,11 @@ export async function sendSubscriptionConfirmation(
       subject: `Abonnement activé — ${APP_NAME}`,
       html: `
         <div dir="ltr" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #2563eb;">${APP_NAME}</h1>
+          <h1 style="color: #2040e0;">${APP_NAME}</h1>
           <p>Bonjour ${name},</p>
           <p>Votre abonnement <strong>${planLabel}</strong> a été activé avec succès.</p>
           <p>Date d'expiration: <strong>${endDate.toLocaleDateString("fr-TN")}</strong></p>
-          <a href="${APP_URL}/dashboard" style="background:#2563eb;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:16px;">
+          <a href="${APP_URL}/dashboard" style="background:#2040e0;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:16px;">
             Accéder à mon espace
           </a>
         </div>

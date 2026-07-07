@@ -49,8 +49,8 @@ const config: Config = {
           foreground: 'hsl(var(--card-foreground))',
         },
         brand: {
-          DEFAULT: '#2563eb',
-          dark: '#1d4ed8',
+          DEFAULT: '#2040e0',
+          dark: '#1630b0',
         },
         amber: {
           DEFAULT: '#f59e0b',
