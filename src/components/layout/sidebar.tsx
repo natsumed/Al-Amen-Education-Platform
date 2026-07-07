@@ -97,12 +97,10 @@ export function Sidebar() {
   return (
     <aside className="w-64 min-h-screen bg-background border-r flex flex-col py-4 px-3 hidden md:flex">
       <Link href="/" className="flex items-center gap-2.5 px-3 mb-6">
-        <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center text-white font-bold shadow-sm">
-          {isAr ? "أ" : "A"}
-        </div>
+        <img src="/images/logo.jpeg" alt="Amenallah Edition" className="w-9 h-9 rounded-xl object-cover shadow-sm" />
         <div className="flex flex-col">
-          <span className="font-bold text-base leading-tight">{isAr ? "الأمان" : "Al-Amân"}</span>
-          <span className="text-[10px] text-muted-foreground leading-tight">{isAr ? "دارالأمان للنشر" : "Éditions Al-Amân"}</span>
+          <span className="font-bold text-base leading-tight">{isAr ? "أمان الله" : "Amenallah"}</span>
+          <span className="text-[10px] text-muted-foreground leading-tight">{isAr ? "أمان الله للنشر و التوزيع" : "Amenallah Edition"}</span>
         </div>
       </Link>
       <nav className="flex-1 space-y-1">

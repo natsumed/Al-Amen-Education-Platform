@@ -114,10 +114,8 @@ export default function ContentDetailPage() {
               </Button>
             </Link>
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                {isAr ? "أ" : "A"}
-              </div>
-              <span className="font-bold text-lg hidden sm:inline">{isAr ? "الأمان" : "Al-Amân"}</span>
+              <img src="/images/logo.jpeg" alt="Amenallah Edition" className="w-8 h-8 rounded-lg object-cover shadow-sm" />
+              <span className="font-bold text-lg hidden sm:inline">{isAr ? "أمان الله" : "Amenallah"}</span>
             </Link>
           </div>
           <div className="flex items-center gap-2">
@@ -478,7 +476,7 @@ export default function ContentDetailPage() {
       {/* Footer */}
       <footer className="border-t py-8 bg-muted/30 mt-12">
         <div className="container text-center text-sm text-muted-foreground">
-          <p>© 2024 {isAr ? "دارالأمان للنشر" : "Éditions Al-Amân"}. {isAr ? "جميع الحقوق محفوظة." : "Tous droits réservés."}</p>
+          <p>© 2024 {isAr ? "أمان الله للنشر و التوزيع" : "Amenallah Edition"}. {isAr ? "جميع الحقوق محفوظة." : "Tous droits réservés."}</p>
         </div>
       </footer>
     </div>

@@ -21,10 +21,8 @@ export function Navbar() {
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-6">
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">
-          {isAr ? "أ" : "A"}
-        </div>
-        <span className="font-semibold text-lg hidden sm:inline">{isAr ? "الأمان" : "Al-Amân"}</span>
+        <img src="/images/logo.jpeg" alt="Amenallah Edition" className="w-8 h-8 rounded-lg object-cover shadow-sm" />
+        <span className="font-semibold text-lg hidden sm:inline">{isAr ? "أمان الله" : "Amenallah"}</span>
       </div>
       <div className="flex items-center gap-3">
         <Button

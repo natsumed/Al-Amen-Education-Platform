@@ -83,7 +83,7 @@ export default function LoginPage() {
     <Card className="border-0 shadow-2xl shadow-primary/5">
       <CardHeader className="text-center pb-2">
         <CardTitle className="text-2xl">{isAr ? "تسجيل الدخول" : "Connexion"}</CardTitle>
-        <CardDescription>{isAr ? "ادخل إلى حسابك على الأمان" : "Connectez-vous à votre compte Al-Amân"}</CardDescription>
+        <CardDescription>{isAr ? "ادخل إلى حسابك على أمان الله" : "Connectez-vous à votre compte Amenallah"}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

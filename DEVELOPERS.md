@@ -1,4 +1,4 @@
-# 👨‍💻 Guide Développeurs — Al-Amân Platform
+# 👨‍💻 Guide Développeurs — Amenallah Platform
 
 Ce document explique comment installer, lancer et contribuer au projet selon votre rôle (frontend ou backend).
 
