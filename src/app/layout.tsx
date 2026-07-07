@@ -12,8 +12,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Al-Amân — Éditions Al-Amân | دارالأمان للنشر",
-  description: "Plateforme éducative tunisienne — Cours vidéo, livres PDF et animations pour les élèves du primaire",
+  title: "Amenallah Edition | أمان الله للنشر و التوزيع",
+  description: "Plateforme éducative tunisienne — Cours vidéo, livres PDF et animations pour les élèves du primaire — Amenallah Edition",
 }
 
 export default function RootLayout({

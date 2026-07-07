@@ -14,7 +14,7 @@ async function main() {
     create: {
       email: "admin@edutunisia.tn",
       passwordHash: adminPassword,
-      fullName: "Admin EduTunisia",
+      fullName: "Admin Amenallah",
       role: "ADMIN",
       phone: "20000000",
       emailVerified: new Date(),

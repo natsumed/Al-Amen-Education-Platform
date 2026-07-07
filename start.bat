@@ -1,10 +1,10 @@
 @echo off
-title EduTunisia Platform
+title Amenallah Platform
 cd /d "%~dp0"
 
 echo.
 echo  =============================================
-echo    EduTunisia - Plateforme Educative
+echo    Amenallah Edition - Plateforme Educative
 echo  =============================================
 echo.
 

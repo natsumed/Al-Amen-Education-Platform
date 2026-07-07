@@ -45,7 +45,7 @@ export default function RegisterPage() {
     <Card className="border-0 shadow-2xl shadow-primary/5">
       <CardHeader className="text-center pb-2">
         <CardTitle className="text-2xl">{isAr ? "إنشاء حساب" : "Créer un compte"}</CardTitle>
-        <CardDescription>{isAr ? "انضم إلى الأمان مجاناً" : "Rejoignez Al-Amân gratuitement"}</CardDescription>
+        <CardDescription>{isAr ? "انضم إلى أمان الله مجاناً" : "Rejoignez Amenallah gratuitement"}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

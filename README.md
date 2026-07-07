@@ -1,4 +1,4 @@
-# Al-Amân — Plateforme Éducative Tunisienne | منصة الأمان التعليمية
+# Amenallah Edition — Plateforme Éducative Tunisienne | منصة أمان الله التعليمية
 
 Plateforme éducative pour les élèves du primaire tunisien (1ère à 6ème année).
 Cours vidéo, livres PDF, séries d'exercices et animations éducatives — en arabe et en français.
@@ -102,4 +102,4 @@ platform/
 
 ## 📄 Licence
 
-© 2024 Éditions Al-Amân | دارالأمان للنشر. Tous droits réservés.
+© 2024 Amenallah Edition | أمان الله للنشر و التوزيع. Tous droits réservés.
