@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.21",
-    "@ai-sdk/openai": "^4.0.17",
+    "@ai-sdk/openai": "^4.0.20",
     "@ai-sdk/react": "^4.0.36",
     "@hookform/resolvers": "3.10.0",
     "@prisma/client": "5.22.0",
