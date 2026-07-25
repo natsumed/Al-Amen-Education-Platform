@@ -12,11 +12,19 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Lock, Download, Play, BookOpen, ArrowLeft, Star, Clock, Eye, Globe, FileText, Film, Zap, ChevronRight, Share2, LogOut, User } from "lucide-react"
+import { Lock, Download, Play, BookOpen, ArrowLeft, Star, Clock, Eye, Globe, FileText, Film, Zap, Share2, LogOut, User } from "lucide-react"
 import { contentTypeLabel, gradeLabel, getYouTubeId } from "@/lib/utils"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useLanguage } from "@/providers/language-provider"
 import { toast } from "sonner"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 
 const TYPE_ICONS: Record<string, any> = {
   COURSE: Film,
@@ -34,6 +42,7 @@ export default function ContentDetailPage() {
   const initials = user?.name?.split(" ")?.map((n: string) => n[0])?.join("")?.toUpperCase() || "U"
   const dashboardUrl = user ? `/${user.role?.toLowerCase()}` : "/login"
   const [content, setContent] = useState<any>(null)
+  const [media, setMedia] = useState<{ youtubeUrl?: string | null; pdfUrl?: string | null; gifUrl?: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [reviews, setReviews] = useState<any[]>([])
   const [relatedContent, setRelatedContent] = useState<any[]>([])
@@ -44,7 +53,7 @@ export default function ContentDetailPage() {
   useEffect(() => {
     fetch(`/api/content/${id}`)
       .then(r => r.json())
-      .then(d => {
+      .then(async (d) => {
         setContent(d)
         setLoading(false)
         if (d.id) {
@@ -52,6 +61,17 @@ export default function ContentDetailPage() {
           fetch(`/api/content?grade=${d.grade}&subject=${d.subject}&limit=4`).then(r => r.json()).then(data => {
             setRelatedContent((data.items || []).filter((c: any) => c.id !== d.id).slice(0, 3))
           })
+          if (d.access?.canAccess) {
+            try {
+              const mediaRes = await fetch(`/api/content/${d.id}/media`)
+              if (mediaRes.ok) {
+                const mediaData = await mediaRes.json()
+                setMedia(mediaData.media || null)
+              }
+            } catch {
+              /* ignore — locked or network */
+            }
+          }
         }
       })
   }, [id])
@@ -101,9 +121,13 @@ export default function ContentDetailPage() {
 
   const title = isAr ? content.titleAr : content.titleFr
   const description = isAr ? content.descriptionAr : content.descriptionFr
-  const ytId = content.youtubeUrl ? getYouTubeId(content.youtubeUrl) : null
-  const canAccess = content.access?.canAccess
-  const canDownload = content.access?.canDownload
+  const canAccess = Boolean(content.access?.canAccess)
+  const canDownload = Boolean(content.access?.canDownload)
+  const videoUrl = media?.youtubeUrl || (canAccess ? content.youtubeUrl : null)
+  const pdfUrl = media?.pdfUrl || (canAccess ? content.pdfUrl : null)
+  const gifUrl = media?.gifUrl || (canAccess ? content.gifUrl : null)
+  const ytId = videoUrl ? getYouTubeId(videoUrl) : null
+  const isDriveVideo = Boolean(videoUrl && videoUrl.includes("drive.google.com"))
   const TypeIcon = TYPE_ICONS[content.contentType] || Film
   const avgRating = reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : null
 
@@ -115,7 +139,7 @@ export default function ContentDetailPage() {
           <div className="flex items-center gap-3">
             <Link href="/content/browse">
               <Button variant="ghost" size="icon">
-                {isAr ? <ChevronRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+                <ArrowLeft className={`h-4 w-4 ${isAr ? "rotate-180" : ""}`} />
               </Button>
             </Link>
             <Link href="/" className="flex items-center gap-2">
@@ -166,13 +190,23 @@ export default function ContentDetailPage() {
 
       <main className="container py-8 max-w-5xl">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link href="/content/browse" className="hover:text-foreground transition-colors">{isAr ? "التصفح" : "Catalogue"}</Link>
-          <ChevronRight className={`h-3 w-3 ${isAr ? "rotate-180" : ""}`} />
-          <span>{gradeLabel(content.grade, language)}</span>
-          <ChevronRight className={`h-3 w-3 ${isAr ? "rotate-180" : ""}`} />
-          <span className="text-foreground font-medium truncate">{title}</span>
-        </div>
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/content/browse">{isAr ? "التصفح" : "Catalogue"}</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{gradeLabel(content.grade, language)}</BreadcrumbPage>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="max-w-[200px] truncate">{title}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -216,17 +250,27 @@ export default function ContentDetailPage() {
               </Card>
             )}
 
-            {/* Video Player */}
-            {ytId && (canAccess || content.isFree ? (
+            {/* Video Player — YouTube embed or Drive preview iframe */}
+            {(ytId || isDriveVideo) && (canAccess ? (
               <Card className="overflow-hidden border-0 shadow-lg">
                 <div className="relative aspect-video bg-black">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${ytId}?rel=0`}
-                    title={title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="absolute inset-0 w-full h-full"
-                  />
+                  {ytId ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${ytId}?rel=0`}
+                      title={title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="absolute inset-0 w-full h-full"
+                    />
+                  ) : (
+                    <iframe
+                      src={videoUrl!}
+                      title={title}
+                      allow="autoplay"
+                      allowFullScreen
+                      className="absolute inset-0 w-full h-full"
+                    />
+                  )}
                 </div>
               </Card>
             ) : (
@@ -257,28 +301,30 @@ export default function ContentDetailPage() {
             ))}
 
             {/* PDF Section */}
-            {content.pdfUrl && (canAccess || content.isFree) && (
+            {pdfUrl && canAccess && (
               <Card className="border-0 shadow-sm">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
                         <FileText className="h-6 w-6 text-red-600" />
                       </div>
                       <div>
                         <p className="font-semibold">{isAr ? "ملف PDF" : "Document PDF"}</p>
-                        <p className="text-sm text-muted-foreground">{isAr ? "متاح للقراءة والتحميل" : "Disponible pour lecture et téléchargement"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {isAr ? "متاح للقراءة (Drive أو رابط مباشر)" : "Lecture via Drive ou lien direct"}
+                        </p>
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <a href={content.pdfUrl} target="_blank" rel="noopener noreferrer">
+                      <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="sm">
                           <Eye className="h-4 w-4 mr-2" />
                           {isAr ? "عرض" : "Voir"}
                         </Button>
                       </a>
                       {canDownload && (
-                        <a href={content.pdfUrl} download>
+                        <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
                           <Button size="sm">
                             <Download className="h-4 w-4 mr-2" />
                             {isAr ? "تحميل" : "Télécharger"}
@@ -287,12 +333,17 @@ export default function ContentDetailPage() {
                       )}
                     </div>
                   </div>
+                  {pdfUrl.includes("drive.google.com") && (
+                    <div className="aspect-[4/3] w-full rounded-lg overflow-hidden border bg-muted">
+                      <iframe src={pdfUrl} title={title} className="w-full h-full" />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
 
             {/* GIF/Animation Section */}
-            {content.gifUrl && (canAccess || content.isFree) && (
+            {gifUrl && canAccess && (
               <Card className="overflow-hidden border-0 shadow-sm">
                 <CardContent className="p-0">
                   <div className="p-4 border-b">
@@ -302,16 +353,22 @@ export default function ContentDetailPage() {
                       </div>
                       <div>
                         <p className="font-semibold">{isAr ? "رسوم متحركة" : "Animation"}</p>
-                        <p className="text-sm text-muted-foreground">{isAr ? "انقر للتحميل" : "Cliquez pour télécharger"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {isAr ? "قصة متحركة تعليمية" : "Animation éducative"}
+                        </p>
                       </div>
                     </div>
                   </div>
                   <div className="p-4 bg-muted/30 flex items-center justify-center">
-                    <img src={content.gifUrl} alt={title} className="max-w-full max-h-96 rounded-lg shadow-sm" />
+                    {gifUrl.includes("drive.google.com") ? (
+                      <iframe src={gifUrl} title={title} className="w-full aspect-video rounded-lg" />
+                    ) : (
+                      <img src={gifUrl} alt={title} className="max-w-full max-h-96 rounded-lg shadow-sm" />
+                    )}
                   </div>
                   {canDownload && (
                     <div className="p-4 border-t">
-                      <a href={content.gifUrl} download>
+                      <a href={gifUrl} target="_blank" rel="noopener noreferrer">
                         <Button size="sm" className="w-full">
                           <Download className="h-4 w-4 mr-2" />
                           {isAr ? "تحميل الرسوم المتحركة" : "Télécharger l'animation"}
@@ -324,7 +381,7 @@ export default function ContentDetailPage() {
             )}
 
             {/* Premium Paywall */}
-            {!canAccess && !content.isFree && !ytId && (
+            {!canAccess && !content.isFree && !ytId && !isDriveVideo && (
               <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 border-0 shadow-lg">
                 <CardContent className="p-8 text-center">
                   <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">

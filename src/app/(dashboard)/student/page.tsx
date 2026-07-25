@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { BookOpen, TrendingUp, Award, Clock } from "lucide-react"
 import { getDaysLeft, formatDate } from "@/lib/utils"
+import { ParentInvitationsCard } from "@/components/dashboard/parent-invitations-card"
 
 export default function StudentDashboard() {
   const { user } = useCurrentUser()
@@ -31,6 +32,8 @@ export default function StudentDashboard() {
         <h1 className="text-2xl font-bold">Bonjour, {user?.name?.split(" ")[0] || "Élève"} 👋</h1>
         <p className="text-muted-foreground">Continuez votre apprentissage</p>
       </div>
+
+      <ParentInvitationsCard />
 
       {/* Subscription Status */}
       {subscription ? (

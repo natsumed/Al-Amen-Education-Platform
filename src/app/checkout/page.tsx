@@ -32,7 +32,8 @@ function CheckoutForm() {
 
       if (provider === "MANUAL") {
         toast.success("Demande enregistrée! Un admin activera votre abonnement sous 24h.")
-        router.push("/student")
+        const role = plan.startsWith("TEACHER") ? "teacher" : "student"
+        router.push(`/${role}`)
       } else if (data.paymentSession?.redirectUrl) {
         window.location.href = data.paymentSession.redirectUrl
       }
@@ -52,7 +53,7 @@ function CheckoutForm() {
           <CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" />Paiement</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="p-4 bg-muted rounded-md">
+            <div className="p-4 bg-muted rounded-md">
             <p className="font-semibold">{plan.replace(/_/g, " ")}</p>
             <p className="text-2xl font-bold mt-1">{price} TND</p>
           </div>
@@ -61,12 +62,12 @@ function CheckoutForm() {
             <p className="text-sm font-medium mb-2">Méthode de paiement</p>
             <div className="space-y-2">
               {[
-                { value: "MANUAL", label: "💵 Paiement en espèces (activation dans 24h)" },
-                { value: "KONNECT", label: "🔗 Konnect (Bientôt disponible)" },
-                { value: "FLOUCI", label: "📱 Flouci (Bientôt disponible)" },
+                { value: "MANUAL", label: "Paiement en espèces (activation admin sous 24h)" },
+                { value: "KONNECT", label: "Konnect (Bientôt disponible)", disabled: true },
+                { value: "FLOUCI", label: "Flouci (Bientôt disponible)", disabled: true },
               ].map(opt => (
-                <label key={opt.value} className={`flex items-center gap-3 p-3 border rounded-md cursor-pointer ${provider === opt.value ? "border-primary bg-primary/5" : ""}`}>
-                  <input type="radio" value={opt.value} checked={provider === opt.value} onChange={e => setProvider(e.target.value)} className="accent-primary" />
+                <label key={opt.value} className={`flex items-center gap-3 p-3 border rounded-md ${opt.disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${provider === opt.value ? "border-primary bg-primary/5" : ""}`}>
+                  <input type="radio" value={opt.value} checked={provider === opt.value} disabled={opt.disabled} onChange={e => setProvider(e.target.value)} className="accent-primary" />
                   <span className="text-sm">{opt.label}</span>
                 </label>
               ))}

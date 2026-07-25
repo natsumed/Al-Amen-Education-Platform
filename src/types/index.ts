@@ -11,6 +11,7 @@ export type Language = "ar" | "fr"
 
 export interface User {
   id: string
+  publicId: string
   email: string
   phone?: string | null
   fullName: string

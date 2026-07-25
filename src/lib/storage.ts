@@ -1,30 +1,28 @@
-import { createClient } from "@supabase/supabase-js"
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-// Server-side client with service role key for storage operations
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 
 const BUCKET = "content"
 
-export async function uploadFile(
-  file: File,
-  path: string
-): Promise<string | null> {
-  const { data, error } = await supabaseAdmin.storage
-    .from(BUCKET)
-    .upload(path, file, { upsert: true })
+function getAdminClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return null
+  return createClient(url, key)
+}
 
+export async function uploadFile(file: File, path: string): Promise<string | null> {
+  const supabaseAdmin = getAdminClient()
+  if (!supabaseAdmin) {
+    console.warn("Supabase not configured — upload skipped")
+    return null
+  }
+
+  const { data, error } = await supabaseAdmin.storage.from(BUCKET).upload(path, file, { upsert: true })
   if (error) {
     console.error("Upload error:", error)
     return null
   }
 
-  const { data: urlData } = supabaseAdmin.storage
-    .from(BUCKET)
-    .getPublicUrl(data.path)
-
+  const { data: urlData } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(data.path)
   return urlData.publicUrl
 }
 
@@ -33,6 +31,12 @@ export async function uploadBuffer(
   path: string,
   contentType: string
 ): Promise<string | null> {
+  const supabaseAdmin = getAdminClient()
+  if (!supabaseAdmin) {
+    console.warn("Supabase not configured — upload skipped")
+    return null
+  }
+
   const { data, error } = await supabaseAdmin.storage
     .from(BUCKET)
     .upload(path, buffer, { contentType, upsert: true })
@@ -42,18 +46,14 @@ export async function uploadBuffer(
     return null
   }
 
-  const { data: urlData } = supabaseAdmin.storage
-    .from(BUCKET)
-    .getPublicUrl(data.path)
-
+  const { data: urlData } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(data.path)
   return urlData.publicUrl
 }
 
-export async function getSignedUrl(
-  path: string,
-  expiresInSeconds = 300
-): Promise<string | null> {
-  // Extract the relative path from a full public URL if needed
+export async function getSignedUrl(path: string, expiresInSeconds = 300): Promise<string | null> {
+  const supabaseAdmin = getAdminClient()
+  if (!supabaseAdmin) return null
+
   const relativePath = path.includes("/storage/v1/object/public/")
     ? path.split(`/storage/v1/object/public/${BUCKET}/`)[1]
     : path
@@ -71,19 +71,18 @@ export async function getSignedUrl(
 }
 
 export async function deleteFile(path: string): Promise<boolean> {
+  const supabaseAdmin = getAdminClient()
+  if (!supabaseAdmin) return false
+
   const relativePath = path.includes("/storage/v1/object/public/")
     ? path.split(`/storage/v1/object/public/${BUCKET}/`)[1]
     : path
 
-  const { error } = await supabaseAdmin.storage
-    .from(BUCKET)
-    .remove([relativePath])
-
+  const { error } = await supabaseAdmin.storage.from(BUCKET).remove([relativePath])
   if (error) {
     console.error("Delete error:", error)
     return false
   }
-
   return true
 }
 

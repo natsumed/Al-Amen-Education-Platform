@@ -7,27 +7,28 @@ Ce document explique comment installer, lancer et contribuer au projet selon vot
 ## 🚀 Installation (pour les deux développeurs)
 
 ```bash
-# 1. Cloner le repo et aller sur votre branche
+# 1. Cloner le repo
 git clone https://github.com/natsumed/Al-Amen-Education-Platform.git
 cd Al-Amen-Education-Platform
 
-# Personne Frontend → branche frontend
-git checkout frontend
+# 2. Partir toujours de main à jour (pas de branches frontend/backend permanentes)
+git checkout main
+git pull origin main
 
-# Personne Backend → branche backend
-git checkout backend
+# 3. Créer une branche de fonctionnalité
+git checkout -b feature/ma-fonctionnalite
 
-# 2. Installer les dépendances
+# 4. Installer les dépendances
 npm install
 
-# 3. Générer la base de données SQLite
+# 5. Générer la base de données SQLite
 npx prisma generate
 npx prisma db push
 
-# 4. Peupler avec les données de test
+# 6. Peupler avec les données de test
 npx tsx prisma/seed.ts
 
-# 5. Lancer le serveur
+# 7. Lancer le serveur
 npm run dev
 ```
 
@@ -40,12 +41,13 @@ Ouvrir http://localhost:3000
 | Admin | admin@edutunisia.tn | admin123 |
 | Enseignant | teacher@edutunisia.tn | teacher123 |
 | Élève | student@edutunisia.tn | student123 |
+| Parent | parent@edutunisia.tn | parent123 |
 
 ---
 
 ## 🎨 Développeur Frontend
 
-Tu travailles sur la branche `frontend`. Ton rôle : **tout ce que l'utilisateur voit et touche**.
+Tu travailles sur des branches `feature/…` (UI). Ton rôle : **tout ce que l'utilisateur voit et touche**.
 
 ### Ce que tu peux développer
 
@@ -142,7 +144,7 @@ Tu travailles sur la branche `frontend`. Ton rôle : **tout ce que l'utilisateur
 
 ## ⚙️ Développeur Backend
 
-Tu travailles sur la branche `backend`. Ton rôle : **API, base de données, logique métier, sécurité, paiements**.
+Tu travailles sur des branches `feature/…` (API). Ton rôle : **API, base de données, logique métier, sécurité, paiements**.
 
 ### Ce que tu peux développer
 
@@ -282,26 +284,46 @@ Tu travailles sur la branche `backend`. Ton rôle : **API, base de données, log
 
 ---
 
-## 🔄 Workflow Git
+## 🔄 Workflow Git (2 développeurs)
+
+**Modèle imposé :** `main` protégé + branches `feature/…` + Pull Requests.  
+Ne plus utiliser de branches longues `frontend` / `backend`.
+
+| Branche | Rôle |
+|---------|------|
+| `main` | Toujours déployable ; pas de commit direct |
+| `feature/<nom-court>` | Travail individuel (UI, API, mobile, …) |
+| `fix/…` (rare) | Intégration multi-PR |
 
 ```bash
 # 1. Toujours partir de main à jour
 git checkout main
-git pull
+git pull origin main
 
-# 2. Mettre à jour votre branche
-git checkout frontend   # ou backend
-git merge main
+# 2. Créer une branche de feature
+git checkout -b feature/checkout-pending-pages
 
 # 3. Travailler, commit, push
 git add .
 git commit -m "feat: description de ce que vous avez fait"
-git push
+git push -u origin HEAD
 
-# 4. Quand une fonctionnalité est prête, créer une PR sur GitHub
-# Aller sur https://github.com/natsumed/Al-Amen-Education-Platform/pulls
-# Base: main  ←  Compare: frontend (ou backend)
+# 4. Ouvrir une PR vers main (CI doit être verte)
+gh pr create --base main --title "feat: …" --body "…"
+# ou via https://github.com/natsumed/Al-Amen-Education-Platform/pulls
+
+# 5. Review par l'autre développeur → squash merge
 ```
+
+### Avant de demander une review
+- Fusionner ou rebaser `main` dans votre feature
+- Vérifier localement : `npm run lint && npx tsc --noEmit && npm test`
+- Pas de secrets (`.env`) dans le commit
+
+### Répartition pratique (souple)
+- **Personne A :** UI / dashboards / marketing / écrans mobile  
+- **Personne B :** APIs / Prisma / auth / paiements / CI  
+- **Partagé :** review PR, seed, tags de release  
 
 ### Conventions de commits
 
@@ -313,6 +335,7 @@ refactor: restructuration du code
 docs: documentation
 test: ajout de tests
 chore: maintenance, dépendances
+ci: pipelines GitHub Actions
 ```
 
 Exemples :
@@ -321,7 +344,35 @@ feat: add mobile responsive sidebar with hamburger menu
 fix: login redirect not working for admin users
 style: enhance content card hover animations
 refactor: extract video player into reusable component
+ci: add vitest and next build jobs
 ```
+
+---
+
+## 🧪 CI / CD
+
+Voir aussi [docs/CICD.md](docs/CICD.md).
+
+### CI (automatique sur chaque PR vers `main`)
+Workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) :
+- `web-lint` — `npm run lint`
+- `web-typecheck` — `npx tsc --noEmit`
+- `web-test` — `npm test` (Vitest)
+- `web-build` — `prisma db push` + `npm run build` (env CI factice)
+- `mobile-typecheck` — `tsc` dans `/mobile`
+
+La PR ne doit être mergée que si tous les checks sont verts.
+
+### CD (progressif)
+- **Maintenant :** pas de déploiement auto ; `npm run dev` + Expo en local
+- **Ensuite :** previews Vercel par PR (review visuelle)
+- **Production :** tag `vX.Y.Z` + PostgreSQL + secrets sur l'hébergeur (jamais dans le repo)
+
+### Protection de `main` (à activer sur GitHub)
+Settings → Branches → Branch protection rule sur `main` :
+- Require a pull request before merging
+- Require status checks: `web-lint`, `web-typecheck`, `web-test`, `web-build`, `mobile-typecheck`
+- Restrict who can push (idéalement personne en direct)
 
 ---
 
@@ -342,7 +393,7 @@ refactor: extract video player into reusable component
 
 | Phase | Frontend | Backend |
 |-------|----------|---------|
-| **Actuelle** | ✅ Landing, auth, browse, content detail | ✅ Auth, CRUD content, access control, seed |
-| **Phase 2** | Mobile responsive, checkout UI, reusable components | Paiements réels (Konnect/Flouci), upload fichiers |
-| **Phase 3** | Gamification, recherche avancée, mode sombre | Tests, sécurité, migration PostgreSQL |
-| **Phase 4** | PWA, accessibilité, animations | Recherche full-text, analytiques, CI/CD |
+| **Actuelle** | ✅ Landing, auth, browse, content detail, chatbot UI | ✅ Auth, CRUD content, access control, seed, agent tools |
+| **Phase 2** | Checkout UI, reusable players, notifications | Paiements réels (Konnect/Flouci), upload fichiers |
+| **Phase 3** | Gamification, recherche avancée, mode sombre | Tests E2E, sécurité, migration PostgreSQL |
+| **Phase 4** | PWA, accessibilité, iOS | Recherche full-text, analytiques, CD production |

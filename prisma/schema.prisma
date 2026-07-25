@@ -3,96 +3,35 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  STUDENT
-  TEACHER
-  PARENT
-}
-
-enum Grade {
-  GRADE_1
-  GRADE_2
-  GRADE_3
-  GRADE_4
-  GRADE_5
-  GRADE_6
-}
-
-enum Subject {
-  ARABIC
-  FRENCH
-  MATH
-  SCIENCE
-  ISLAMIC
-  HISTORY
-  CIVIC
-  ARTS
-  ENGLISH
-}
-
-enum ContentType {
-  COURSE
-  BOOK
-  SERIES
-  ANIMATION
-}
-
-enum SubscriptionPlan {
-  FREE
-  STUDENT_MONTHLY
-  STUDENT_YEARLY
-  TEACHER_MONTHLY
-  TEACHER_YEARLY
-}
-
-enum SubscriptionStatus {
-  ACTIVE
-  EXPIRED
-  CANCELLED
-}
-
-enum PaymentProvider {
-  KONNECT
-  FLOUCI
-  MANUAL
-}
-
-enum PaymentStatus {
-  PENDING
-  SUCCESS
-  FAILED
-  REFUNDED
-}
-
-enum ParentLinkStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-}
+// Enums removed — SQLite uses plain String fields
+// TypeScript string literal unions in src/types/index.ts provide type safety
 
 model User {
   id            String    @id @default(uuid())
+  publicId      String    @unique
   email         String    @unique
   passwordHash  String?
   phone         String?
   fullName      String
-  role          Role      @default(STUDENT)
+  role          String    @default("STUDENT")
   avatarUrl     String?
   googleId      String?   @unique
   emailVerified DateTime?
   resetToken    String?
   resetTokenExp DateTime?
   isBanned      Boolean   @default(false)
+  preferredLanguage String?
+  emailNotifications Boolean @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   subscriptions          Subscription[]
   payments               Payment[]
+  beneficiaryPayments    Payment[]             @relation("PaymentBeneficiary")
   reviews                Review[]
   progress               Progress[]
   parentLinks            ParentLink[]          @relation("Parent")
@@ -104,14 +43,14 @@ model User {
 }
 
 model Subscription {
-  id        String             @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
-  plan      SubscriptionPlan
-  status    SubscriptionStatus @default(ACTIVE)
-  startDate DateTime           @default(now())
+  plan      String
+  status    String   @default("ACTIVE")
+  startDate DateTime @default(now())
   endDate   DateTime
-  autoRenew Boolean            @default(false)
-  createdAt DateTime           @default(now())
+  autoRenew Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -120,43 +59,47 @@ model Subscription {
 }
 
 model Payment {
-  id             String          @id @default(uuid())
-  userId         String
-  amount         Float
-  currency       String          @default("TND")
-  provider       PaymentProvider
-  status         PaymentStatus   @default(PENDING)
-  transactionRef String?
-  itemType       String
-  itemId         String?
-  createdAt      DateTime        @default(now())
+  id                String   @id @default(uuid())
+  userId            String
+  beneficiaryUserId String?
+  amount            Float
+  currency          String   @default("TND")
+  provider          String
+  status            String   @default("PENDING")
+  transactionRef    String?
+  itemType          String
+  itemId            String?
+  createdAt         DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  beneficiary User? @relation("PaymentBeneficiary", fields: [beneficiaryUserId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([beneficiaryUserId])
   @@index([transactionRef])
+  @@index([status])
 }
 
 model Content {
-  id            String      @id @default(uuid())
+  id            String   @id @default(uuid())
   titleAr       String
   titleFr       String
   descriptionAr String?
   descriptionFr String?
-  grade         Grade
-  subject       Subject
-  contentType   ContentType
-  isFree        Boolean     @default(true)
+  grade         String
+  subject       String
+  contentType   String
+  isFree        Boolean  @default(true)
   price         Float?
   thumbnailUrl  String?
   youtubeUrl    String?
   pdfUrl        String?
   gifUrl        String?
-  fileUrls      String      @default("[]")
-  status        String      @default("PUBLISHED")
+  fileUrls      String   @default("[]")
+  status        String   @default("PUBLISHED")
   uploadedById  String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   uploadedBy User      @relation("UploadedBy", fields: [uploadedById], references: [id])
   reviews    Review[]
@@ -197,11 +140,11 @@ model Progress {
 }
 
 model ParentLink {
-  id        String           @id @default(uuid())
+  id        String   @id @default(uuid())
   parentId  String
   studentId String
-  status    ParentLinkStatus @default(PENDING)
-  createdAt DateTime         @default(now())
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
 
   parent  User @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
   student User @relation("Student", fields: [studentId], references: [id], onDelete: Cascade)
@@ -223,13 +166,13 @@ model Purchase {
 }
 
 model ManualActivationLog {
-  id           String           @id @default(uuid())
+  id           String   @id @default(uuid())
   adminId      String
   targetUserId String
-  plan         SubscriptionPlan
+  plan         String
   durationDays Int
   reason       String?
-  createdAt    DateTime         @default(now())
+  createdAt    DateTime @default(now())
 
   admin      User @relation("Admin", fields: [adminId], references: [id])
   targetUser User @relation("TargetUser", fields: [targetUserId], references: [id])

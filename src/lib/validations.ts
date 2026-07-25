@@ -1,11 +1,36 @@
 import { z } from "zod"
 
-export const registerSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().optional(),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["STUDENT", "TEACHER", "PARENT"]).default("STUDENT"),
+export const registerSchema = z
+  .object({
+    fullName: z.string().min(2, "Full name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    phone: z.string().optional(),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    // Teachers are allowed to self-register; parents monitor only; students learn
+    role: z.enum(["STUDENT", "TEACHER", "PARENT"]).default("STUDENT"),
+    /** Required when role is PARENT — student's 8-digit publicId */
+    studentPublicId: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "PARENT") {
+      if (!data.studentPublicId || !/^\d{8}$/.test(data.studentPublicId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "N° compte élève (8 chiffres) requis",
+          path: ["studentPublicId"],
+        })
+      }
+    }
+  })
+
+const optionalUrl = z.string().url().optional().or(z.literal(""))
+
+export const adminUpdateUserSchema = z.object({
+  fullName: z.string().min(2).optional(),
+  phone: z.string().optional().nullable(),
+  role: z.enum(["ADMIN", "STUDENT", "TEACHER", "PARENT"]).optional(),
+  isBanned: z.boolean().optional(),
+  avatarUrl: optionalUrl.optional().nullable(),
 })
 
 export const loginSchema = z.object({
@@ -28,9 +53,33 @@ export const resetPasswordSchema = z.object({
 
 export const updateProfileSchema = z.object({
   fullName: z.string().min(2).optional(),
-  phone: z.string().optional(),
-  avatarUrl: z.string().url().optional().or(z.literal("")),
+  phone: z.string().optional().nullable(),
+  /** Absolute URL or site-relative path (e.g. /uploads/avatars/…) */
+  avatarUrl: z
+    .string()
+    .refine(
+      (v) =>
+        v === "" ||
+        v.startsWith("/uploads/") ||
+        /^https?:\/\//i.test(v),
+      "URL ou chemin d'avatar invalide"
+    )
+    .optional()
+    .nullable(),
+  preferredLanguage: z.enum(["fr", "ar"]).optional().nullable(),
+  emailNotifications: z.boolean().optional(),
 })
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Mot de passe actuel requis"),
+    newPassword: z.string().min(8, "Le nouveau mot de passe doit contenir au moins 8 caractères"),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: "Les mots de passe ne correspondent pas",
+    path: ["confirmPassword"],
+  })
 
 export const createContentSchema = z.object({
   titleAr: z.string().min(2, "Arabic title required"),
@@ -42,8 +91,19 @@ export const createContentSchema = z.object({
   contentType: z.enum(["COURSE", "BOOK", "SERIES", "ANIMATION"]),
   isFree: z.boolean().default(true),
   price: z.number().min(0).optional(),
-  youtubeUrl: z.string().url().optional().or(z.literal("")),
+  thumbnailUrl: optionalUrl,
+  /** YouTube or Drive video link (Drive links normalized at serve time) */
+  youtubeUrl: optionalUrl,
+  /** PDF / book — Drive share link or direct URL (filled when Drive is ready) */
+  pdfUrl: optionalUrl,
+  /** Animated story — Drive / GIF / WebM URL */
+  gifUrl: optionalUrl,
   status: z.enum(["PUBLISHED", "DRAFT"]).default("PUBLISHED"),
+})
+
+export const parentLinkRespondSchema = z.object({
+  linkId: z.string().min(1),
+  action: z.enum(["ACCEPT", "REJECT"]),
 })
 
 export const updateContentSchema = createContentSchema.partial()
@@ -53,17 +113,37 @@ export const createPaymentSchema = z.object({
   itemId: z.string().optional(),
   plan: z.enum(["FREE", "STUDENT_MONTHLY", "STUDENT_YEARLY", "TEACHER_MONTHLY", "TEACHER_YEARLY"]).optional(),
   provider: z.enum(["KONNECT", "FLOUCI", "MANUAL"]),
+  /** When a parent pays for a linked student — publicId, email, or UUID */
+  beneficiaryId: z.string().optional(),
+})
+
+export const approvePaymentSchema = z.object({
+  paymentId: z.string().min(1),
+  action: z.enum(["APPROVE", "REJECT"]),
+  reason: z.string().optional(),
 })
 
 export const manualActivationSchema = z.object({
-  targetUserId: z.string().min(1, "User ID required"),
+  /** UUID, 8-digit public ID, or email */
+  targetUserId: z.string().min(1, "ID, email ou n° compte requis"),
   plan: z.enum(["STUDENT_MONTHLY", "STUDENT_YEARLY", "TEACHER_MONTHLY", "TEACHER_YEARLY"]),
   durationDays: z.number().min(1).max(365),
   reason: z.string().optional(),
 })
 
 export const parentLinkSchema = z.object({
-  childEmail: z.string().email("Invalid email address"),
+  /** Student email or 8-digit publicId */
+  childIdentifier: z.string().min(1, "Email ou n° compte élève requis").optional(),
+  /** @deprecated use childIdentifier — kept for backward compatibility */
+  childEmail: z.string().email().optional(),
+}).superRefine((data, ctx) => {
+  if (!data.childIdentifier && !data.childEmail) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Email ou n° compte élève requis",
+      path: ["childIdentifier"],
+    })
+  }
 })
 
 export const progressSchema = z.object({
@@ -95,8 +175,12 @@ export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
 export type CreateContentInput = z.infer<typeof createContentSchema>
 export type ManualActivationInput = z.infer<typeof manualActivationSchema>
 export type ParentLinkInput = z.infer<typeof parentLinkSchema>
+export type ParentLinkRespondInput = z.infer<typeof parentLinkRespondSchema>
 export type ProgressInput = z.infer<typeof progressSchema>
 export type ReviewInput = z.infer<typeof reviewSchema>
+export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>

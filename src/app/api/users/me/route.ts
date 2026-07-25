@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { updateProfileSchema } from "@/lib/validations"
 
-export async function GET(req: NextRequest) {
+const meSelect = {
+  id: true,
+  publicId: true,
+  email: true,
+  fullName: true,
+  role: true,
+  avatarUrl: true,
+  phone: true,
+  isBanned: true,
+  preferredLanguage: true,
+  emailNotifications: true,
+  createdAt: true,
+} as const
+
+export async function GET() {
   try {
     const session = await auth()
     if (!session?.user?.id) {
@@ -11,16 +26,7 @@ export async function GET(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        role: true,
-        avatarUrl: true,
-        phone: true,
-        isBanned: true,
-        createdAt: true,
-      },
+      select: meSelect,
     })
 
     if (!user) {
@@ -46,6 +52,45 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ user, subscription })
   } catch (error) {
     console.error("GET /api/users/me error:", error)
+    return NextResponse.json({ error: "Server error" }, { status: 500 })
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const body = await req.json()
+    const parsed = updateProfileSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    }
+
+    const data = parsed.data
+    const user = await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        ...(data.fullName !== undefined ? { fullName: data.fullName } : {}),
+        ...(data.phone !== undefined ? { phone: data.phone || null } : {}),
+        ...(data.avatarUrl !== undefined
+          ? { avatarUrl: data.avatarUrl === "" ? null : data.avatarUrl }
+          : {}),
+        ...(data.preferredLanguage !== undefined
+          ? { preferredLanguage: data.preferredLanguage }
+          : {}),
+        ...(data.emailNotifications !== undefined
+          ? { emailNotifications: data.emailNotifications }
+          : {}),
+      },
+      select: meSelect,
+    })
+
+    return NextResponse.json({ user })
+  } catch (error) {
+    console.error("PATCH /api/users/me error:", error)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
 }

@@ -2,19 +2,17 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useLanguage } from "@/providers/language-provider"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { MarketingNavbar } from "@/components/layout/marketing-navbar"
 import {
-  BookOpen, Video, Zap, Users, ChevronRight, Shield, Globe,
-  GraduationCap, Sparkles, School, MonitorPlay, Newspaper,
-  Heart, Star, Smile, Target, Award, Clock, BookMarked, Palette,
-  ArrowRight, Play, CheckCircle, LogOut, User
+  BookOpen, Video, Zap, Users, ChevronRight, Shield,
+  GraduationCap, Sparkles, School, MonitorPlay,
+  Heart, Target, Award, Clock, Star, Smile, BookMarked, Palette,
+  ArrowRight, Play, CheckCircle
 } from "lucide-react"
 
 const FEATURES = [
@@ -35,107 +33,28 @@ const ABOUT_POINTS = [
 ]
 
 export default function HomePage() {
-  const { language, setLanguage } = useLanguage()
+  const { language } = useLanguage()
   const { user } = useCurrentUser()
   const isAr = language === "ar"
-  const initials = user?.name?.split(" ")?.map((n: string) => n[0])?.join("")?.toUpperCase() || "U"
   const dashboardUrl = user ? `/${user.role?.toLowerCase()}` : "/login"
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden" dir={isAr ? "rtl" : "ltr"}>
-      {/* ======= NAVBAR ======= */}
-      <nav className="border-b bg-white/90 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-3">
-            <a href="https://www.facebook.com/profile.php?id=100064329450686" target="_blank" rel="noopener noreferrer" className="shrink-0">
-              <img src="/images/logo.jpeg" alt="Amenallah Edition" className="w-11 h-11 rounded-xl object-cover shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-shadow cursor-pointer" />
-            </a>
-            <Link href="/" className="flex-col hidden sm:flex">
-              <span className="font-bold text-lg leading-tight">{isAr ? "أمان الله" : "Amenallah"}</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">{isAr ? "أمان الله للنشر و التوزيع" : "Amenallah Edition"}</span>
-            </Link>
-            <div className="hidden lg:flex items-center gap-1.5 ml-3 pl-3 border-l">
-              <Link href="/content/browse?for=student">
-                <Button variant="outline" size="sm" className="gap-1.5 rounded-full border-primary/30 hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all">
-                  <GraduationCap className="h-3.5 w-3.5" />
-                  {isAr ? "تلميذ" : "Élève"}
-                </Button>
-              </Link>
-              <Link href="/content/browse?for=teacher">
-                <Button variant="outline" size="sm" className="gap-1.5 rounded-full border-primary/30 hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all">
-                  <School className="h-3.5 w-3.5" />
-                  {isAr ? "معلم" : "Enseignant"}
-                </Button>
-              </Link>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="sm" onClick={() => setLanguage(isAr ? "fr" : "ar")} className="gap-1.5">
-              <Globe className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{isAr ? "FR" : "عربي"}</span>
-            </Button>
-            <Link href="/content/browse" className="hidden md:block">
-              <Button variant="ghost" size="sm">{isAr ? "تصفح" : "Explorer"}</Button>
-            </Link>
-            <Link href="/pricing" className="hidden md:block">
-              <Button variant="ghost" size="sm">{isAr ? "الأسعار" : "Tarifs"}</Button>
-            </Link>
-            <Link href="/content/browse?sort=newest" className="hidden md:block">
-              <Button variant="ghost" size="sm" className="gap-1">
-                <Newspaper className="h-3.5 w-3.5" />
-                {isAr ? "آخر الإصدارات" : "Nouveautés"}
-              </Button>
-            </Link>
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={user?.image || ""} alt={user?.name || ""} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="font-medium">{user?.name}</div>
-                    <div className="text-xs text-muted-foreground">{user?.email}</div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href={dashboardUrl}>
-                      <User className="h-4 w-4 mr-2" />
-                      {isAr ? "مساحتي" : "Mon espace"}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive cursor-pointer" onClick={() => signOut({ callbackUrl: "/" })}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    {isAr ? "تسجيل الخروج" : "Se déconnecter"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <>
-                <Link href="/login">
-                  <Button variant="outline" size="sm">{isAr ? "دخول" : "Connexion"}</Button>
-                </Link>
-                <Link href="/register">
-                  <Button size="sm" className="gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {isAr ? "تسجيل" : "S'inscrire"}
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+      <MarketingNavbar />
 
       {/* ======= HERO ======= */}
       <section className="relative py-24 md:py-36 overflow-hidden">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/videos/platform-vid.mp4" type="video/mp4" />
+        </video>
         {/* Animated background blobs */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-indigo-50/60 to-purple-50/60" />
         <motion.div
           animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
@@ -241,6 +160,54 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ======= PARCOURS ======= */}
+      <section className="py-16 md:py-20">
+        <div className="container">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight mb-3">
+              {isAr ? "اختر مسارك" : "Choisissez votre parcours"}
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              {isAr
+                ? "استكشف المحتوى المخصص للتلاميذ أو للمعلمين."
+                : "Explorez le contenu adapté aux élèves ou aux enseignants."}
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-5 max-w-3xl mx-auto">
+            <Link href="/content/browse?for=student" className="group">
+              <Card className="border-0 shadow-soft ring-1 ring-border/60 h-full transition-all group-hover:-translate-y-1 group-hover:shadow-lg">
+                <CardContent className="p-6 flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                    <GraduationCap className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg mb-1">{isAr ? "محتوى التلاميذ" : "Contenu élèves"}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {isAr ? "دروس وتمارين للسنوات 1–6" : "Cours et exercices pour les années 1 à 6"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/content/browse?for=teacher" className="group">
+              <Card className="border-0 shadow-soft ring-1 ring-border/60 h-full transition-all group-hover:-translate-y-1 group-hover:shadow-lg">
+                <CardContent className="p-6 flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-700 flex items-center justify-center">
+                    <School className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg mb-1">{isAr ? "محتوى المعلمين" : "Contenu enseignants"}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {isAr ? "أدوات الصف والرسوم المتحركة" : "Outils de classe et animations"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ======= FEATURES ======= */}
       <section className="py-24 bg-slate-50/50">
         <div className="container">
@@ -339,7 +306,7 @@ export default function HomePage() {
       </section>
 
       {/* ======= ABOUT US ======= */}
-      <section className="py-24 bg-white">
+      <section id="about" className="py-24 bg-white">
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <Badge className="mb-4 rounded-full bg-primary/10 text-primary border-primary/20" variant="outline">
