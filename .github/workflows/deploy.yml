@@ -1,0 +1,19 @@
+# Deploy production (manual / on release tag)
+# Enable after PostgreSQL + host secrets are ready. See docs/CICD.md.
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  notice:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment not configured yet
+        run: |
+          echo "CD is documented in docs/CICD.md."
+          echo "Connect Vercel (or your host), set production secrets, then replace this job with a real deploy."
+          echo "Do not put AUTH_SECRET, DATABASE_URL, or payment keys in the repository."

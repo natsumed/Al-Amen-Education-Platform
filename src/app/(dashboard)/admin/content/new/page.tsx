@@ -91,7 +91,10 @@ export default function NewContentPage() {
                 {errors.subject && <p className="text-xs text-destructive mt-1">{errors.subject.message}</p>}
               </div>
             </div>
-            <div><Label>Lien YouTube (optionnel)</Label><Input {...register("youtubeUrl")} placeholder="https://youtube.com/watch?v=..." /></div>
+            <div><Label>Lien YouTube ou Drive (vidéo)</Label><Input {...register("youtubeUrl")} placeholder="https://youtube.com/... ou https://drive.google.com/file/d/..." /><p className="text-xs text-muted-foreground mt-1">Les fichiers Drive seront collés ici quand ils seront prêts.</p></div>
+            <div><Label>Lien PDF / livre (Drive ou URL)</Label><Input {...register("pdfUrl")} placeholder="https://drive.google.com/file/d/..." /></div>
+            <div><Label>Lien animation / GIF (Drive ou URL)</Label><Input {...register("gifUrl")} placeholder="https://drive.google.com/file/d/... ou .gif" /></div>
+            <div><Label>Miniature (URL optionnelle)</Label><Input {...register("thumbnailUrl")} placeholder="https://..." /></div>
             <div className="flex items-center justify-between p-4 border rounded-md">
               <div><p className="font-medium">Contenu gratuit</p><p className="text-sm text-muted-foreground">Accessible sans abonnement</p></div>
               <Switch checked={isFree} onCheckedChange={(v) => { setIsFree(v); setValue("isFree", v) }} />

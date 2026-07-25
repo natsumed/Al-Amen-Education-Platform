@@ -21,5 +21,7 @@ declare module "next-auth/jwt" {
     id: string
     role: Role
     fullName: string
+    lastChecked?: number
+    error?: string
   }
 }

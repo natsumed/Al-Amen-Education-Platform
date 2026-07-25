@@ -11,6 +11,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { LogOut, User, Settings, Globe } from "lucide-react"
+import { MobileSidebar } from "@/components/layout/mobile-sidebar"
 
 export function Navbar() {
   const { user } = useCurrentUser()
@@ -19,8 +20,9 @@ export function Navbar() {
   const initials = user?.name?.split(" ")?.map((n: string) => n[0])?.join("")?.toUpperCase() || "U"
 
   return (
-    <header className="h-16 border-b bg-background flex items-center justify-between px-6">
-      <div className="flex items-center gap-2.5">
+    <header className="h-16 border-b bg-background flex items-center justify-between px-4 sm:px-6">
+      <div className="flex items-center gap-2">
+        <MobileSidebar />
         <img src="/images/logo.jpeg" alt="Amenallah Edition" className="w-8 h-8 rounded-lg object-cover shadow-sm" />
         <span className="font-semibold text-lg hidden sm:inline">{isAr ? "أمان الله" : "Amenallah"}</span>
       </div>

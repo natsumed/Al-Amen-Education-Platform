@@ -76,8 +76,14 @@ const config: Config = {
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
       fontFamily: {
-        sans: ['Geist', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-jakarta)', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
         arabic: ['Cairo', 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        soft: '0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06)',
+      },
+      backgroundImage: {
+        'mesh': 'radial-gradient(at 20% 20%, rgba(32, 64, 224, 0.08) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(245, 158, 11, 0.06) 0px, transparent 40%), radial-gradient(at 50% 100%, rgba(32, 64, 224, 0.05) 0px, transparent 50%)',
       },
     },
   },

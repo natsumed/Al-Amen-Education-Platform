@@ -2,12 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState } from "react"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useLanguage } from "@/providers/language-provider"
 import { cn } from "@/lib/utils"
 import {
-  LayoutDashboard, BookOpen, Video, Users, CreditCard, Settings,
-  BarChart3, UserCheck, Library, GraduationCap, Baby, TrendingUp
+  LayoutDashboard, BookOpen, Video, Users, CreditCard,
+  BarChart3, UserCheck, Library, GraduationCap, Baby, TrendingUp,
+  ChevronDown, Clock, Crown, List,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -19,11 +21,15 @@ interface NavItemProps {
 
 function NavItem({ href, icon: Icon, label }: NavItemProps) {
   const pathname = usePathname()
-  const active = pathname === href || pathname.startsWith(href + "/")
+  const rootPaths = ["/admin", "/teacher", "/student", "/parent", "/admin/payments"]
+  const finalActive = rootPaths.includes(href)
+    ? pathname === href || pathname === `${href}/`
+    : pathname === href || pathname.startsWith(`${href}/`)
+
   return (
     <Link href={href} className={cn(
       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
-      active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      finalActive ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
     )}>
       <Icon className="h-4 w-4 shrink-0" />
       <span className="truncate">{label}</span>
@@ -31,60 +37,131 @@ function NavItem({ href, icon: Icon, label }: NavItemProps) {
   )
 }
 
-const NAV_LINKS_FR: Record<string, NavItemProps[]> = {
+type NavEntry =
+  | { type: "link"; href: string; icon: LucideIcon; label: string }
+  | {
+      type: "group"
+      id: string
+      icon: LucideIcon
+      label: string
+      children: { href: string; icon: LucideIcon; label: string }[]
+    }
+
+const NAV_LINKS_FR: Record<string, NavEntry[]> = {
   ADMIN: [
-    { href: "/admin", icon: LayoutDashboard, label: "Tableau de bord" },
-    { href: "/admin/content", icon: Video, label: "Contenus" },
-    { href: "/admin/users", icon: Users, label: "Utilisateurs" },
-    { href: "/admin/payments", icon: CreditCard, label: "Paiements" },
-    { href: "/admin/manual-activation", icon: UserCheck, label: "Activation manuelle" },
-    { href: "/admin/analytics", icon: BarChart3, label: "Analytiques" },
+    { type: "link", href: "/admin", icon: LayoutDashboard, label: "Tableau de bord" },
+    { type: "link", href: "/admin/content", icon: Video, label: "Contenus" },
+    { type: "link", href: "/admin/users", icon: Users, label: "Utilisateurs" },
+    {
+      type: "group",
+      id: "payments",
+      icon: CreditCard,
+      label: "Paiements",
+      children: [
+        { href: "/admin/payments", icon: List, label: "Tous" },
+        { href: "/admin/payments/pending", icon: Clock, label: "En attente" },
+        { href: "/admin/payments/premium", icon: Crown, label: "Comptes premium" },
+        { href: "/admin/payments/manual", icon: UserCheck, label: "Activation manuelle" },
+      ],
+    },
+    { type: "link", href: "/admin/analytics", icon: BarChart3, label: "Analytiques" },
   ],
   TEACHER: [
-    { href: "/teacher", icon: LayoutDashboard, label: "Tableau de bord" },
-    { href: "/teacher/browse", icon: BookOpen, label: "Explorer" },
-    { href: "/teacher/library", icon: Library, label: "Ma bibliothèque" },
-    { href: "/teacher/subscription", icon: CreditCard, label: "Abonnement" },
+    { type: "link", href: "/teacher", icon: LayoutDashboard, label: "Tableau de bord" },
+    { type: "link", href: "/teacher/browse", icon: BookOpen, label: "Explorer" },
+    { type: "link", href: "/teacher/library", icon: Library, label: "Ma bibliothèque" },
+    { type: "link", href: "/teacher/subscription", icon: CreditCard, label: "Abonnement" },
   ],
   STUDENT: [
-    { href: "/student", icon: LayoutDashboard, label: "Tableau de bord" },
-    { href: "/student/browse", icon: BookOpen, label: "Explorer" },
-    { href: "/student/my-courses", icon: GraduationCap, label: "Mes cours" },
-    { href: "/student/progress", icon: TrendingUp, label: "Ma progression" },
-    { href: "/student/subscription", icon: CreditCard, label: "Abonnement" },
+    { type: "link", href: "/student", icon: LayoutDashboard, label: "Tableau de bord" },
+    { type: "link", href: "/student/browse", icon: BookOpen, label: "Explorer" },
+    { type: "link", href: "/student/my-courses", icon: GraduationCap, label: "Mes cours" },
+    { type: "link", href: "/student/progress", icon: TrendingUp, label: "Ma progression" },
+    { type: "link", href: "/student/subscription", icon: CreditCard, label: "Abonnement" },
   ],
   PARENT: [
-    { href: "/parent", icon: LayoutDashboard, label: "Tableau de bord" },
-    { href: "/parent/children", icon: Baby, label: "Mes enfants" },
+    { type: "link", href: "/parent", icon: LayoutDashboard, label: "Tableau de bord" },
+    { type: "link", href: "/parent/children", icon: Baby, label: "Mes enfants" },
+    { type: "link", href: "/parent/pay", icon: CreditCard, label: "Payer pour un enfant" },
   ],
 }
 
-const NAV_LINKS_AR: Record<string, NavItemProps[]> = {
+const NAV_LINKS_AR: Record<string, NavEntry[]> = {
   ADMIN: [
-    { href: "/admin", icon: LayoutDashboard, label: "لوحة التحكم" },
-    { href: "/admin/content", icon: Video, label: "المحتويات" },
-    { href: "/admin/users", icon: Users, label: "المستخدمون" },
-    { href: "/admin/payments", icon: CreditCard, label: "المدفوعات" },
-    { href: "/admin/manual-activation", icon: UserCheck, label: "التفعيل اليدوي" },
-    { href: "/admin/analytics", icon: BarChart3, label: "الإحصائيات" },
+    { type: "link", href: "/admin", icon: LayoutDashboard, label: "لوحة التحكم" },
+    { type: "link", href: "/admin/content", icon: Video, label: "المحتويات" },
+    { type: "link", href: "/admin/users", icon: Users, label: "المستخدمون" },
+    {
+      type: "group",
+      id: "payments",
+      icon: CreditCard,
+      label: "المدفوعات",
+      children: [
+        { href: "/admin/payments", icon: List, label: "الكل" },
+        { href: "/admin/payments/pending", icon: Clock, label: "قيد الانتظار" },
+        { href: "/admin/payments/premium", icon: Crown, label: "حسابات مميزة" },
+        { href: "/admin/payments/manual", icon: UserCheck, label: "تفعيل يدوي" },
+      ],
+    },
+    { type: "link", href: "/admin/analytics", icon: BarChart3, label: "الإحصائيات" },
   ],
   TEACHER: [
-    { href: "/teacher", icon: LayoutDashboard, label: "لوحة التحكم" },
-    { href: "/teacher/browse", icon: BookOpen, label: "تصفح" },
-    { href: "/teacher/library", icon: Library, label: "مكتبتي" },
-    { href: "/teacher/subscription", icon: CreditCard, label: "الاشتراك" },
+    { type: "link", href: "/teacher", icon: LayoutDashboard, label: "لوحة التحكم" },
+    { type: "link", href: "/teacher/browse", icon: BookOpen, label: "تصفح" },
+    { type: "link", href: "/teacher/library", icon: Library, label: "مكتبتي" },
+    { type: "link", href: "/teacher/subscription", icon: CreditCard, label: "الاشتراك" },
   ],
   STUDENT: [
-    { href: "/student", icon: LayoutDashboard, label: "لوحة التحكم" },
-    { href: "/student/browse", icon: BookOpen, label: "تصفح" },
-    { href: "/student/my-courses", icon: GraduationCap, label: "دروسي" },
-    { href: "/student/progress", icon: TrendingUp, label: "تقدمي" },
-    { href: "/student/subscription", icon: CreditCard, label: "الاشتراك" },
+    { type: "link", href: "/student", icon: LayoutDashboard, label: "لوحة التحكم" },
+    { type: "link", href: "/student/browse", icon: BookOpen, label: "تصفح" },
+    { type: "link", href: "/student/my-courses", icon: GraduationCap, label: "دروسي" },
+    { type: "link", href: "/student/progress", icon: TrendingUp, label: "تقدمي" },
+    { type: "link", href: "/student/subscription", icon: CreditCard, label: "الاشتراك" },
   ],
   PARENT: [
-    { href: "/parent", icon: LayoutDashboard, label: "لوحة التحكم" },
-    { href: "/parent/children", icon: Baby, label: "أطفالي" },
+    { type: "link", href: "/parent", icon: LayoutDashboard, label: "لوحة التحكم" },
+    { type: "link", href: "/parent/children", icon: Baby, label: "أطفالي" },
+    { type: "link", href: "/parent/pay", icon: CreditCard, label: "الدفع لابن" },
   ],
+}
+
+function NavGroup({
+  entry,
+}: {
+  entry: Extract<NavEntry, { type: "group" }>
+}) {
+  const pathname = usePathname()
+  const childActive = entry.children.some(
+    (c) => pathname === c.href || pathname.startsWith(c.href + "/")
+  )
+  const [open, setOpen] = useState(childActive || pathname.startsWith("/admin/payments"))
+  const Icon = entry.icon
+
+  return (
+    <div className="space-y-0.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+          childActive
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="truncate flex-1 text-start">{entry.label}</span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="ms-3 space-y-0.5 border-s ps-2">
+          {entry.children.map((child) => (
+            <NavItem key={child.href} {...child} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function Sidebar() {
@@ -104,7 +181,13 @@ export function Sidebar() {
         </div>
       </Link>
       <nav className="flex-1 space-y-1">
-        {links.map((link) => <NavItem key={link.href} {...link} />)}
+        {links.map((entry) =>
+          entry.type === "group" ? (
+            <NavGroup key={entry.id} entry={entry} />
+          ) : (
+            <NavItem key={entry.href} href={entry.href} icon={entry.icon} label={entry.label} />
+          )
+        )}
       </nav>
       <div className="mt-auto pt-4 border-t px-3">
         <div className="text-sm font-medium truncate">{user?.name ?? user?.email}</div>

@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Amenallah",
+    "slug": "al-amen-education",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "alamen",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "tn.amenallah.education"
+    },
+    "android": {
+      "package": "tn.amenallah.education",
+      "adaptiveIcon": {
+        "backgroundColor": "#2040e0",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": ["expo-web-browser"],
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 0
+    }
+  }
+}

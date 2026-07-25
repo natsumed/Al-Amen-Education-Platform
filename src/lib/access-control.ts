@@ -6,7 +6,10 @@ export async function canAccessContent(
   userRole: string,
   content: Pick<Content, "id" | "isFree">
 ): Promise<boolean> {
-  // Free content is accessible to everyone
+  // Parents never consume courses — monitoring + payment only
+  if (userRole === "PARENT") return false
+
+  // Free content is accessible to everyone (except parents)
   if (content.isFree) return true
 
   // Admins always have access
@@ -39,6 +42,7 @@ export async function canDownload(
   userRole: string,
   content: Pick<Content, "id" | "isFree">
 ): Promise<boolean> {
+  if (userRole === "PARENT") return false
   // Admins always can download
   if (userRole === "ADMIN") return true
 
@@ -75,6 +79,11 @@ export async function getContentAccessInfo(
       canDownload: false,
       isSubscribed: false,
     }
+  }
+
+  // Parents: monitoring only — no course access
+  if (userRole === "PARENT") {
+    return { canAccess: false, canDownload: false, isSubscribed: false }
   }
 
   if (userRole === "ADMIN") {

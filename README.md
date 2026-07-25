@@ -24,32 +24,54 @@ Ouvrir http://localhost:3000
 
 ## 🔑 Comptes de test
 
-| Rôle | Email | Mot de passe |
-|------|-------|-------------|
-| Admin | admin@edutunisia.tn | admin123 |
-| Enseignant | teacher@edutunisia.tn | teacher123 |
-| Élève | student@edutunisia.tn | student123 |
+| Rôle | Email | Mot de passe | N° compte |
+|------|-------|-------------|-----------|
+| Admin | admin@edutunisia.tn | admin123 | 10000001 |
+| Enseignant | teacher@edutunisia.tn | teacher123 | 10000002 |
+| Élève | student@edutunisia.tn | student123 | 10000003 |
+| Parent | parent@edutunisia.tn | parent123 | 10000004 |
+
+**Rôles :** l'enseignant accède aux ressources pédagogiques ; le parent suit la progression et paie pour l'élève (sans accès aux cours).
+
+## Assistant (chatbot)
+
+Agent flottant (élève / enseignant / parent) avec outils Prisma (recherche cours/livres, progression enfant, tarifs).
+
+- **Recommandé (gratuit) :** `GEMINI_API_KEY` (Google AI Studio) + `gemini-3.5-flash-lite` (moins de 503 « high demand »). En cas de saturation, bascule auto vers d’autres modèles puis mode local DB. Redémarrez `next dev` après ajout.
+- Fallback optionnel : `OPENAI_API_KEY`.
+- Sans clé : **mode local intelligent** (même outils DB, pas de FAQ figée).
+
+Logo / favicon : `public/images/logo.jpeg`.
 
 ## 📁 Structure du projet
 
 ```
 platform/
+├── mobile/            # App Android Expo (React Native)
+├── docs/              # ANDROID.md et docs techniques
 ├── prisma/            # Schéma de base de données et seed
 ├── public/            # Assets statiques, traductions
 ├── src/
 │   ├── app/           # Pages et API routes (App Router)
-│   │   ├── (auth)/    # Login, register, forgot password
-│   │   ├── (dashboard)/ # Admin, Teacher, Student, Parent
-│   │   ├── content/   # Catalogue et pages de contenu
-│   │   └── api/       # Routes API REST
-│   ├── components/    # Composants UI réutilisables
-│   ├── hooks/         # Hooks React personnalisés
-│   ├── lib/           # Logique métier, auth, paiements
-│   ├── providers/     # Context providers
-│   └── types/         # Types TypeScript
-├── .env.local         # Variables d'environnement
-└── start.bat          # Lancement en un clic
+│   ├── components/    # Composants UI (shadcn)
+│   ├── lib/           # Auth, access-control, media, paiements
+│   └── ...
+└── .env.example       # Modèle de configuration
 ```
+
+## 📱 Application Android
+
+Client natif Expo dans `/mobile` — voir [docs/ANDROID.md](docs/ANDROID.md) and [mobile/README.md](mobile/README.md).
+
+```bash
+cd mobile
+npm start   # Expo Go ou émulateur Android
+```
+
+## 🤝 Contribution & CI
+
+Voir [DEVELOPERS.md](DEVELOPERS.md) (branches `feature/…` + PR) et [docs/CICD.md](docs/CICD.md).
+Les PR vers `main` doivent passer lint, typecheck, Vitest, build et typecheck mobile.
 
 ## 🛠 Stack technique
 

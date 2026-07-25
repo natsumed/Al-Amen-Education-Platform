@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createContentSchema, contentFiltersSchema } from "@/lib/validations"
+import { stripMediaForList } from "@/lib/content-media"
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +17,8 @@ export async function GET(req: NextRequest) {
 
     const { grade, subject, contentType, isFree, search, page = 1, limit = 12 } = filters.data || {}
 
-    const where: any = {
+    // SQLite does not support mode: "insensitive" — use contains only (case-sensitive on SQLite)
+    const where: Record<string, unknown> = {
       status: "PUBLISHED",
       ...(grade && { grade }),
       ...(subject && { subject }),
@@ -24,14 +26,15 @@ export async function GET(req: NextRequest) {
       ...(isFree !== undefined && { isFree }),
       ...(search && {
         OR: [
-          { titleFr: { contains: search, mode: "insensitive" } },
-          { titleAr: { contains: search, mode: "insensitive" } },
-          { descriptionFr: { contains: search, mode: "insensitive" } },
+          { titleFr: { contains: search } },
+          { titleAr: { contains: search } },
+          { descriptionFr: { contains: search } },
+          { descriptionAr: { contains: search } },
         ],
       }),
     }
 
-    const [items, total] = await Promise.all([
+    const [rawItems, total] = await Promise.all([
       prisma.content.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -41,6 +44,9 @@ export async function GET(req: NextRequest) {
       }),
       prisma.content.count({ where }),
     ])
+
+    // Never expose paywalled media URLs in catalog listings
+    const items = rawItems.map((item) => stripMediaForList(item))
 
     return NextResponse.json({ items, total, page, totalPages: Math.ceil(total / (limit ?? 12)), limit })
   } catch (error) {

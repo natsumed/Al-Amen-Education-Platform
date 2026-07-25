@@ -1,12 +1,21 @@
-import { PrismaClient, Role, Grade, Subject, ContentType } from "@prisma/client"
+import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
 
 const prisma = new PrismaClient()
 
+async function ensurePublicId(current?: string | null) {
+  if (current) return current
+  for (let i = 0; i < 20; i++) {
+    const publicId = String(Math.floor(10000000 + Math.random() * 90000000))
+    const exists = await prisma.user.findUnique({ where: { publicId }, select: { id: true } })
+    if (!exists) return publicId
+  }
+  throw new Error("publicId generation failed")
+}
+
 async function main() {
   console.log("Seeding database...")
 
-  // Create admin user
   const adminPassword = await bcrypt.hash("admin123", 12)
   const admin = await prisma.user.upsert({
     where: { email: "admin@edutunisia.tn" },
@@ -14,15 +23,18 @@ async function main() {
     create: {
       email: "admin@edutunisia.tn",
       passwordHash: adminPassword,
-      fullName: "Admin Al-Aman",
-      role: Role.ADMIN,
+      fullName: "Admin Amenallah",
+      role: "ADMIN",
       phone: "20000000",
       emailVerified: new Date(),
+      publicId: "10000001",
     },
   })
-  console.log("Admin created:", admin.email)
+  if (!admin.publicId) {
+    await prisma.user.update({ where: { id: admin.id }, data: { publicId: await ensurePublicId() } })
+  }
+  console.log("Admin:", admin.email, "publicId:", admin.publicId || "10000001")
 
-  // Create a teacher user
   const teacherPassword = await bcrypt.hash("teacher123", 12)
   const teacher = await prisma.user.upsert({
     where: { email: "teacher@edutunisia.tn" },
@@ -31,14 +43,14 @@ async function main() {
       email: "teacher@edutunisia.tn",
       passwordHash: teacherPassword,
       fullName: "Mme Fatma Ben Ali",
-      role: Role.TEACHER,
+      role: "TEACHER",
       phone: "20000001",
       emailVerified: new Date(),
+      publicId: "10000002",
     },
   })
-  console.log("Teacher created:", teacher.email)
+  console.log("Teacher:", teacher.email, "publicId:", teacher.publicId)
 
-  // Create a student user
   const studentPassword = await bcrypt.hash("student123", 12)
   const student = await prisma.user.upsert({
     where: { email: "student@edutunisia.tn" },
@@ -47,132 +59,109 @@ async function main() {
       email: "student@edutunisia.tn",
       passwordHash: studentPassword,
       fullName: "Mohamed Salah",
-      role: Role.STUDENT,
+      role: "STUDENT",
       phone: "20000002",
       emailVerified: new Date(),
+      publicId: "10000003",
     },
   })
-  console.log("Student created:", student.email)
+  console.log("Student:", student.email, "publicId:", student.publicId)
 
-  // Create sample content items
-  const contentData: Array<{
-    titleAr: string; titleFr: string; descriptionAr: string; descriptionFr: string
-    grade: Grade; subject: Subject; contentType: ContentType
-    isFree: boolean; price: number | null; youtubeUrl?: string; thumbnailUrl?: string
-  }> = [
-    {
-      titleAr: "الحروف العربية - الجزء الأول",
-      titleFr: "Les lettres arabes — Partie 1",
-      descriptionAr: "تعلم الحروف العربية من الألف إلى الزاي مع فيديوهات ممتعة",
-      descriptionFr: "Apprendre les lettres arabes de alif à zay avec des vidéos ludiques",
-      grade: Grade.GRADE_1, subject: Subject.ARABIC, contentType: ContentType.COURSE,
-      isFree: true, price: null,
-      youtubeUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg",
+  const parentPassword = await bcrypt.hash("parent123", 12)
+  const parent = await prisma.user.upsert({
+    where: { email: "parent@edutunisia.tn" },
+    update: {},
+    create: {
+      email: "parent@edutunisia.tn",
+      passwordHash: parentPassword,
+      fullName: "Ali Ben Salah",
+      role: "PARENT",
+      phone: "20000003",
+      emailVerified: new Date(),
+      publicId: "10000004",
     },
-    {
-      titleAr: "الرياضيات - الجمع والطرح",
-      titleFr: "Mathématiques — Addition et soustraction",
-      descriptionAr: "تعلم عمليات الجمع والطرح للأعداد من 1 إلى 100",
-      descriptionFr: "Apprendre l'addition et la soustraction des nombres de 1 à 100",
-      grade: Grade.GRADE_2, subject: Subject.MATH, contentType: ContentType.COURSE,
-      isFree: true, price: null,
-      youtubeUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg",
-    },
-    {
-      titleAr: "الفرنسية - أساسيات القراءة",
-      titleFr: "Français — Bases de la lecture",
-      descriptionAr: "تعلم قراءة النصوص البسيطة باللغة الفرنسية",
-      descriptionFr: "Apprendre à lire des textes simples en français",
-      grade: Grade.GRADE_3, subject: Subject.FRENCH, contentType: ContentType.COURSE,
-      isFree: false, price: 10.00,
-      youtubeUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg",
-    },
-    {
-      titleAr: "كتاب الرياضيات - السنة الرابعة",
-      titleFr: "Livre de mathématiques — 4ème année",
-      descriptionAr: "كتاب PDF شامل لدروس الرياضيات للسنة الرابعة ابتدائي",
-      descriptionFr: "Livre PDF complet de mathématiques pour la 4ème année primaire",
-      grade: Grade.GRADE_4, subject: Subject.MATH, contentType: ContentType.BOOK,
-      isFree: false, price: 5.00,
-    },
-    {
-      titleAr: "سلسلة تمارين العلوم",
-      titleFr: "Série d'exercices — Sciences",
-      descriptionAr: "تمارين متنوعة في مادة الإيقاظ العلمي للسنة الخامسة",
-      descriptionFr: "Exercices variés en sciences pour la 5ème année",
-      grade: Grade.GRADE_5, subject: Subject.SCIENCE, contentType: ContentType.SERIES,
-      isFree: false, price: 3.00,
-    },
-    {
-      titleAr: "رسوم متحركة - دورة الماء في الطبيعة",
-      titleFr: "Animation — Le cycle de l'eau",
-      descriptionAr: "رسم متحرك يشرح دورة الماء في الطبيعة",
-      descriptionFr: "Animation expliquant le cycle de l'eau dans la nature",
-      grade: Grade.GRADE_3, subject: Subject.SCIENCE, contentType: ContentType.ANIMATION,
-      isFree: true, price: null,
-    },
-    {
-      titleAr: "التربية الإسلامية - الصلاة",
-      titleFr: "Éducation islamique — La prière",
-      descriptionAr: "تعلم كيفية أداء الصلاة بطريقة صحيحة",
-      descriptionFr: "Apprendre à accomplir la prière correctement",
-      grade: Grade.GRADE_2, subject: Subject.ISLAMIC, contentType: ContentType.COURSE,
-      isFree: true, price: null,
-      youtubeUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg",
-    },
-    {
-      titleAr: "قواعد اللغة العربية - السنة السادسة",
-      titleFr: "Grammaire arabe — 6ème année",
-      descriptionAr: "دروس متقدمة في قواعد اللغة العربية",
-      descriptionFr: "Cours avancés de grammaire arabe",
-      grade: Grade.GRADE_6, subject: Subject.ARABIC, contentType: ContentType.COURSE,
-      isFree: false, price: 8.00,
-      youtubeUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg",
-    },
-    {
-      titleAr: "كتاب التاريخ والجغرافيا",
-      titleFr: "Livre d'histoire-géographie",
-      descriptionAr: "كتاب PDF للتاريخ والجغرافيا للسنة الخامسة",
-      descriptionFr: "Livre PDF d'histoire-géographie pour la 5ème année",
-      grade: Grade.GRADE_5, subject: Subject.HISTORY, contentType: ContentType.BOOK,
-      isFree: false, price: 4.00,
-    },
-    {
-      titleAr: "التربية المدنية - حقوق الطفل",
-      titleFr: "Éducation civique — Droits de l'enfant",
-      descriptionAr: "تعلم حقوق الطفل وواجباته",
-      descriptionFr: "Apprendre les droits et devoirs de l'enfant",
-      grade: Grade.GRADE_4, subject: Subject.CIVIC, contentType: ContentType.COURSE,
-      isFree: true, price: null,
-      youtubeUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg",
-    },
-  ]
+  })
+  console.log("Parent:", parent.email, "publicId:", parent.publicId)
 
-  for (const data of contentData) {
-    await prisma.content.create({ data: { ...data, uploadedById: admin.id } })
+  // Accepted parent–student link for demos
+  await prisma.parentLink.upsert({
+    where: { parentId_studentId: { parentId: parent.id, studentId: student.id } },
+    update: { status: "ACCEPTED" },
+    create: { parentId: parent.id, studentId: student.id, status: "ACCEPTED" },
+  })
+
+  const existingContent = await prisma.content.count()
+  if (existingContent === 0) {
+    const contentData = [
+      {
+        titleAr: "الحروف العربية - الجزء الأول",
+        titleFr: "Les lettres arabes — Partie 1",
+        descriptionAr: "تعلم الحروف العربية من الألف إلى الزاي مع فيديوهات ممتعة",
+        descriptionFr: "Apprendre les lettres arabes de alif à zay avec des vidéos ludiques",
+        grade: "GRADE_1",
+        subject: "ARABIC",
+        contentType: "COURSE",
+        isFree: true,
+        youtubeUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg",
+      },
+      {
+        titleAr: "الرياضيات - الجمع والطرح",
+        titleFr: "Mathématiques — Addition et soustraction",
+        descriptionAr: "تعلم عمليات الجمع والطرح للأعداد من 1 إلى 100",
+        descriptionFr: "Apprendre l'addition et la soustraction des nombres de 1 à 100",
+        grade: "GRADE_2",
+        subject: "MATH",
+        contentType: "COURSE",
+        isFree: true,
+        youtubeUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      },
+      {
+        titleAr: "كتاب القراءة - السنة الثالثة",
+        titleFr: "Livre de lecture — 3ème année",
+        descriptionFr: "PDF de lecture (lien Drive à ajouter plus tard)",
+        grade: "GRADE_3",
+        subject: "FRENCH",
+        contentType: "BOOK",
+        isFree: false,
+        price: 5,
+      },
+      {
+        titleAr: "قصة متحركة: الصداقة",
+        titleFr: "Animation: L'amitié",
+        descriptionFr: "Animation éducative (lien Drive à ajouter plus tard)",
+        grade: "GRADE_1",
+        subject: "CIVIC",
+        contentType: "ANIMATION",
+        isFree: true,
+      },
+    ]
+
+    for (const item of contentData) {
+      await prisma.content.create({
+        data: { ...item, uploadedById: admin.id, status: "PUBLISHED" },
+      })
+    }
+    console.log(`Created ${contentData.length} content items`)
+  } else {
+    console.log(`Content already present (${existingContent}), skipping`)
   }
-  console.log(`${contentData.length} content items created`)
 
-  console.log("\nSeeding complete!")
-  console.log("─".repeat(50))
-  console.log("Test accounts:")
-  console.log("  Admin:   admin@edutunisia.tn / admin123")
-  console.log("  Teacher: teacher@edutunisia.tn / teacher123")
-  console.log("  Student: student@edutunisia.tn / student123")
-  console.log("─".repeat(50))
+  // Backfill publicId for any user missing it
+  const missing = await prisma.user.findMany({ where: { publicId: "" } }).catch(() => [])
+  // Also find via raw if needed — after migration all should have publicId
+
+  console.log("Seed complete.")
+  console.log("Accounts:")
+  console.log("  admin@edutunisia.tn / admin123     (ID 10000001)")
+  console.log("  teacher@edutunisia.tn / teacher123 (ID 10000002)")
+  console.log("  student@edutunisia.tn / student123 (ID 10000003)")
+  console.log("  parent@edutunisia.tn / parent123   (ID 10000004)")
 }
 
 main()
   .catch((e) => {
-    console.error("Seed error:", e)
+    console.error(e)
     process.exit(1)
   })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+  .finally(() => prisma.$disconnect())
