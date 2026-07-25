@@ -369,6 +369,8 @@ La PR ne doit être mergée que si tous les checks sont verts.
 - **Production :** tag `vX.Y.Z` + PostgreSQL + secrets sur l'hébergeur (jamais dans le repo)
 
 ### Protection de `main` (à activer sur GitHub)
+Voir le guide pas à pas : [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md).
+
 Settings → Branches → Branch protection rule sur `main` :
 - Require a pull request before merging
 - Require status checks: `web-lint`, `web-typecheck`, `web-test`, `web-build`, `mobile-typecheck`
