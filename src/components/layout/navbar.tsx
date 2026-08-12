@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { LogOut, User, Settings, Globe } from "lucide-react"
 import { MobileSidebar } from "@/components/layout/mobile-sidebar"
+import { ModeToggle } from "@/components/mode-toggle"
 
 export function Navbar() {
   const { user } = useCurrentUser()
@@ -27,6 +28,7 @@ export function Navbar() {
         <span className="font-semibold text-lg hidden sm:inline">{isAr ? "أمان الله" : "Amenallah"}</span>
       </div>
       <div className="flex items-center gap-3">
+        <ModeToggle />
         <Button
           variant="outline"
           size="sm"

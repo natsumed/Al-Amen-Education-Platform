@@ -73,9 +73,12 @@
   font-family: 'Cairo', 'Arial', system-ui, sans-serif;
 }
 
-/* Smooth transitions */
-* {
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+/* Smooth theme transitions for surfaces */
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
 }
 
 /* Custom scrollbar */

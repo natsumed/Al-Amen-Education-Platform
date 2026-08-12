@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
 import { getContentAccessInfo } from "@/lib/access-control"
+import { getRequestUser } from "@/lib/request-auth"
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth()
-  const access = await getContentAccessInfo(session?.user?.id || null, session?.user?.role || null, params.id)
+  const user = await getRequestUser(req)
+  const access = await getContentAccessInfo(user?.id || null, user?.role || null, params.id)
   return NextResponse.json(access)
 }

@@ -49,6 +49,14 @@ next-env.d.ts
 mobile/.expo/
 mobile/dist/
 mobile/.env
+mobile/android/
+mobile/ios/
+mobile/tools/
+mobile/.gradle-home/
+mobile/.m2-local/
+
+# Android sideload APK (host via public/downloads; do not commit binaries)
+/public/downloads/*.apk
 
 
 __pycache__/

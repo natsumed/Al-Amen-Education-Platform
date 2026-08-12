@@ -39,7 +39,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${jakarta.variable} font-sans antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="amenallah-theme">
           <SessionProvider>
             <LanguageProvider>
               {children}

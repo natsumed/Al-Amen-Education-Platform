@@ -299,7 +299,7 @@ export async function smartOfflineReply(
       }
       return {
         text:
-          formatProgressList(data.items, lang, lang === "ar" ? "أنت" : "vous") +
+          formatProgressList(data.items || [], lang, lang === "ar" ? "أنت" : "vous") +
           `\n\n${data.progressPage}` +
           geminiHint(lang),
         intent,

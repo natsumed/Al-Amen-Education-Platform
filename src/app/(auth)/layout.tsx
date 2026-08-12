@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useLanguage } from "@/providers/language-provider"
 import { Button } from "@/components/ui/button"
+import { ModeToggle } from "@/components/mode-toggle"
 import { Globe } from "lucide-react"
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -10,7 +11,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   const isAr = language === "ar"
 
   return (
-    <div className="min-h-screen flex flex-col" dir={isAr ? "rtl" : "ltr"}>
+    <div className="min-h-screen flex flex-col bg-background" dir={isAr ? "rtl" : "ltr"}>
       <div className="flex items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2.5">
           <img src="/images/logo.jpeg" alt="Amenallah Edition" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-primary/20" />
@@ -19,15 +20,18 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <span className="text-[10px] text-muted-foreground leading-tight">{isAr ? "أمان الله للنشر و التوزيع" : "Amenallah Edition"}</span>
           </div>
         </Link>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setLanguage(isAr ? "fr" : "ar")}
-          className="gap-2"
-        >
-          <Globe className="h-3.5 w-3.5" />
-          {isAr ? "Français" : "العربية"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <ModeToggle />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLanguage(isAr ? "fr" : "ar")}
+            className="gap-2"
+          >
+            <Globe className="h-3.5 w-3.5" />
+            {isAr ? "Français" : "العربية"}
+          </Button>
+        </div>
       </div>
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">

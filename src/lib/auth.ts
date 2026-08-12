@@ -30,7 +30,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null
 
         // Rate limiting check
-        const email = credentials.email as string
+        const email = String(credentials.email).trim().toLowerCase()
         const limit = loginLimiter.check(email)
         if (!limit.allowed) {
           throw new Error("Too many login attempts. Please try again later.")

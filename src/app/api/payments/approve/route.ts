@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { approvePaymentSchema } from "@/lib/validations"
 import { approvePayment, rejectPayment } from "@/lib/payment"
+import { sendPushToUser } from "@/lib/push"
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,6 +27,13 @@ export async function POST(req: NextRequest) {
       parsed.data.paymentId,
       parsed.data.reason
     )
+    if (result.targetUserId) {
+      void sendPushToUser(result.targetUserId, {
+        title: "Amenallah",
+        body: "Votre abonnement a été activé. Bon apprentissage !",
+        data: { type: "subscription" },
+      })
+    }
     return NextResponse.json({
       message: "Paiement approuvé et abonnement activé",
       ...result,

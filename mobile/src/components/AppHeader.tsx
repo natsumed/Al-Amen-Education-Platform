@@ -1,7 +1,8 @@
 import React from "react"
-import { View, Text, Pressable, StyleSheet } from "react-native"
-import { colors, spacing, typography, radius } from "../theme"
-import { t, type Language } from "../lib/i18n"
+import { View, Text, Pressable, StyleSheet, Image } from "react-native"
+import { spacing, typography, radius, useColors } from "../theme"
+import { ThemeToggle } from "./ThemeToggle"
+import { isRTL, t, type Language } from "../lib/i18n"
 
 type Props = {
   title: string
@@ -9,22 +10,54 @@ type Props = {
   language: Language
   onToggleLanguage: () => void
   onLogout?: () => void
+  showLogo?: boolean
+  showThemeToggle?: boolean
 }
 
-export function AppHeader({ title, subtitle, language, onToggleLanguage, onLogout }: Props) {
+export function AppHeader({
+  title,
+  subtitle,
+  language,
+  onToggleLanguage,
+  onLogout,
+  showLogo = true,
+  showThemeToggle = true,
+}: Props) {
+  const colors = useColors()
+  const rtl = isRTL(language)
   return (
-    <View style={styles.header}>
-      <View style={styles.left}>
-        <Text style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
+    <View style={[styles.header, rtl && styles.headerRtl]}>
+      <View style={[styles.left, rtl && styles.leftRtl]}>
+        {showLogo ? (
+          <Image
+            source={require("../../assets/logo.jpeg")}
+            style={[styles.logo, rtl ? styles.logoRtl : styles.logoLtr]}
+            resizeMode="cover"
+          />
+        ) : null}
+        <View style={styles.titles}>
+          <Text style={[styles.title, { color: colors.primary }, rtl && styles.rtlText]}>{title}</Text>
+          {subtitle ? (
+            <Text style={[styles.sub, { color: colors.muted }, rtl && styles.rtlText]}>{subtitle}</Text>
+          ) : null}
+        </View>
       </View>
       <View style={styles.actions}>
-        <Pressable onPress={onToggleLanguage} style={styles.chip}>
-          <Text style={styles.chipText}>{language === "ar" ? "FR" : "عربي"}</Text>
+        {showThemeToggle ? <ThemeToggle /> : null}
+        <Pressable
+          onPress={onToggleLanguage}
+          style={[styles.chip, { borderColor: colors.border, backgroundColor: colors.surface }]}
+        >
+          <Text style={[styles.chipText, { color: colors.text }]}>
+            {language === "ar" ? "FR" : "عربي"}
+          </Text>
         </Pressable>
         {onLogout ? (
-          <Pressable onPress={onLogout} style={styles.chip}>
-            <Text style={styles.chipText}>{t("logout", language)}</Text>
+          <Pressable
+            onPress={onLogout}
+            style={[styles.chip, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          >
+            <Text style={[styles.chipText, { color: colors.text }]}>{t("logout", language)}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -40,17 +73,26 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
   },
-  left: { flex: 1, paddingRight: spacing.md },
-  title: { ...typography.h1, color: colors.primary },
-  sub: { ...typography.caption, color: colors.muted, marginTop: 2 },
-  actions: { flexDirection: "row", gap: spacing.sm },
+  headerRtl: { flexDirection: "row-reverse" },
+  left: { flex: 1, flexDirection: "row", alignItems: "center", paddingRight: spacing.md },
+  leftRtl: { flexDirection: "row-reverse", paddingRight: 0, paddingLeft: spacing.md },
+  logo: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+  },
+  logoLtr: { marginRight: spacing.sm },
+  logoRtl: { marginLeft: spacing.sm },
+  rtlText: { textAlign: "right", writingDirection: "rtl" },
+  titles: { flex: 1 },
+  title: { ...typography.h1 },
+  sub: { ...typography.caption, marginTop: 2 },
+  actions: { flexDirection: "row", gap: spacing.sm, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" },
   chip: {
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  chipText: { ...typography.caption, color: colors.text, fontWeight: "700" },
+  chipText: { ...typography.caption, fontWeight: "700" },
 })

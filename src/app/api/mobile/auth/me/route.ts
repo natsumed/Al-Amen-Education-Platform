@@ -28,6 +28,9 @@ export async function GET(req: NextRequest) {
         fullName: true,
         role: true,
         avatarUrl: true,
+        phone: true,
+        preferredLanguage: true,
+        emailNotifications: true,
         subscriptions: {
           where: { status: "ACTIVE", endDate: { gt: new Date() } },
           orderBy: { endDate: "desc" },

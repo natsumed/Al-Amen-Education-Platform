@@ -137,7 +137,7 @@ export async function approvePayment(adminId: string, paymentId: string, reason?
     },
   })
 
-  return { ...result, payment: updatedPayment }
+  return { ...result, payment: updatedPayment, targetUserId: target.id }
 }
 
 export async function rejectPayment(paymentId: string, reason?: string) {

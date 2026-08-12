@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { mkdir, writeFile } from "fs/promises"
 import path from "path"
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getRequestUser } from "@/lib/request-auth"
 
 export const runtime = "nodejs"
 
@@ -15,12 +15,14 @@ const ALLOWED = new Map([
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const requestUser = await getRequestUser(req)
+    if (!requestUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const form = await req.formData()
+    const form = (await req.formData()) as unknown as {
+      get(name: string): File | string | null
+    }
     const file = form.get("file")
     if (!file || !(file instanceof File)) {
       return NextResponse.json({ error: "Fichier image requis" }, { status: 400 })
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
     const dir = path.join(process.cwd(), "public", "uploads", "avatars")
     await mkdir(dir, { recursive: true })
 
-    const filename = `${session.user.id}.${ext}`
+    const filename = `${requestUser.id}.${ext}`
     const diskPath = path.join(dir, filename)
     await writeFile(diskPath, buffer)
 
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
     const avatarUrl = `/uploads/avatars/${filename}?v=${Date.now()}`
 
     const user = await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: requestUser.id },
       data: { avatarUrl },
       select: {
         id: true,

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getRequestUser } from "@/lib/request-auth"
 import { parentLinkSchema } from "@/lib/validations"
 import { resolveUserByIdentifier } from "@/lib/user-id"
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id || session.user.role !== "PARENT") {
+    const user = await getRequestUser(req)
+    if (!user || user.role !== "PARENT") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
@@ -27,14 +27,14 @@ export async function POST(req: NextRequest) {
     }
 
     const existing = await prisma.parentLink.findUnique({
-      where: { parentId_studentId: { parentId: session.user.id, studentId: child.id } },
+      where: { parentId_studentId: { parentId: user.id, studentId: child.id } },
     })
     if (existing) {
       return NextResponse.json({ error: "Lien déjà existant" }, { status: 409 })
     }
 
     const link = await prisma.parentLink.create({
-      data: { parentId: session.user.id, studentId: child.id, status: "PENDING" },
+      data: { parentId: user.id, studentId: child.id, status: "PENDING" },
     })
     return NextResponse.json(link, { status: 201 })
   } catch {

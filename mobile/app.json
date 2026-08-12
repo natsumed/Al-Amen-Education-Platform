@@ -2,17 +2,32 @@
   "expo": {
     "name": "Amenallah",
     "slug": "al-amen-education",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "alamen",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2040e0"
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "tn.amenallah.education"
+      "bundleIdentifier": "tn.amenallah.education",
+      "buildNumber": "1",
+      "usesAppleSignIn": false,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Amenallah utilise votre photo uniquement pour votre avatar.",
+        "NSCameraUsageDescription": "Amenallah utilise la caméra uniquement pour votre avatar.",
+        "NSPhotoLibraryAddUsageDescription": "Amenallah n'enregistre pas de photos dans votre bibliothèque.",
+        "CFBundleAllowMixedLocalizations": true
+      }
     },
     "android": {
       "package": "tn.amenallah.education",
+      "versionCode": 3,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#2040e0",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,7 +39,26 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-web-browser"],
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Amenallah utilise votre photo uniquement pour votre avatar."
+        }
+      ],
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#2040e0",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
+        }
+      ],
+      "expo-image",
+      "expo-font"
+    ],
     "updates": {
       "enabled": false,
       "checkAutomatically": "NEVER",
