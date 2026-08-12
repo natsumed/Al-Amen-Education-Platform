@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useLanguage } from "@/providers/language-provider"
 import { Loader2, Copy, Upload, Trash2 } from "lucide-react"
 import { useSession } from "next-auth/react"
+import { ModeToggle } from "@/components/mode-toggle"
 
 type MeUser = {
   id: string
@@ -371,6 +372,15 @@ export default function SettingsPage() {
                             العربية
                           </Button>
                         </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 rounded-xl border border-border/80 bg-muted/30 px-4 py-3">
+                        <div>
+                          <Label className="block">{isAr ? "المظهر" : "Apparence"}</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {isAr ? "فاتح أو داكن" : "Clair ou sombre — glissez le bouton"}
+                          </p>
+                        </div>
+                        <ModeToggle />
                       </div>
                       <div className="flex items-center justify-between rounded-xl border p-4">
                         <div>

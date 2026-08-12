@@ -33,11 +33,13 @@ const FEATURES_AR: Record<string, string> = {
   twoMonthsFree: "شهران مجاناً",
 }
 
+// Pastel tints in light mode; a single clean surface in dark mode
+// (the alpha tints turn muddy over dark backgrounds).
 const PLAN_BG: Record<string, string> = {
-  STUDENT_MONTHLY: "bg-primary/5",
-  STUDENT_YEARLY: "bg-teal-400/15",
-  TEACHER_MONTHLY: "bg-amber-400/15",
-  TEACHER_YEARLY: "bg-violet-400/15",
+  STUDENT_MONTHLY: "bg-primary/5 dark:bg-card",
+  STUDENT_YEARLY: "bg-teal-400/15 dark:bg-card",
+  TEACHER_MONTHLY: "bg-amber-400/15 dark:bg-card",
+  TEACHER_YEARLY: "bg-violet-400/15 dark:bg-card",
 }
 
 export default function Pricing() {
@@ -150,7 +152,7 @@ export default function Pricing() {
                           </p>
                           <Button
                             asChild
-                            className="relative bg-white hover:bg-white text-foreground text-sm font-medium rounded-full h-12 p-1 ps-6 pe-14 group transition-all duration-500 hover:ps-14 hover:pe-6 w-fit overflow-hidden border shadow-sm"
+                            className="relative bg-white hover:bg-white text-slate-900 text-sm font-medium rounded-full h-12 p-1 ps-6 pe-14 group transition-all duration-500 hover:ps-14 hover:pe-6 w-fit overflow-hidden border shadow-sm"
                           >
                             <Link href={`/checkout?plan=${plan.id}`}>
                               <span className="relative z-10 transition-all duration-500">

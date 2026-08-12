@@ -54,7 +54,7 @@ export default function HomePage() {
           <source src="/videos/platform-vid.mp4" type="video/mp4" />
         </video>
         {/* Animated background blobs */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-indigo-50/60 to-purple-50/60" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-indigo-50/60 to-purple-50/60 dark:from-slate-950/80 dark:via-slate-950/70 dark:to-slate-900/80" />
         <motion.div
           animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
@@ -92,7 +92,7 @@ export default function HomePage() {
               {isAr ? "منصة تعليمية تونسية — أمان الله للنشر و التوزيع" : "Plateforme éducative tunisienne — Amenallah Edition"}
             </Badge>
 
-            <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6 leading-tight tracking-tight">
+            <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 dark:text-white mb-6 leading-tight tracking-tight">
               {isAr ? "تعلّم وانجح" : "Apprends et"}{" "}
               <br />
               <span className="bg-gradient-to-r from-primary via-[#6c5ce7] to-[#e17055] bg-clip-text text-transparent">
@@ -126,13 +126,13 @@ export default function HomePage() {
         {/* Wave divider */}
         <div className="absolute bottom-0 left-0 right-0">
           <svg viewBox="0 0 1440 100" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-auto">
-            <path d="M0 50C120 80 240 20 360 40C480 60 600 30 720 35C840 40 960 70 1080 45C1200 20 1320 60 1440 35V100H0V50Z" className="fill-white" />
+            <path d="M0 50C120 80 240 20 360 40C480 60 600 30 720 35C840 40 960 70 1080 45C1200 20 1320 60 1440 35V100H0V50Z" className="fill-white dark:fill-background" />
           </svg>
         </div>
       </section>
 
       {/* ======= LOGO SHOWCASE ======= */}
-      <section className="py-16 bg-white relative">
+      <section className="py-16 bg-white dark:bg-background relative">
         <div className="container text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
@@ -192,7 +192,7 @@ export default function HomePage() {
             <Link href="/content/browse?for=teacher" className="group">
               <Card className="border-0 shadow-soft ring-1 ring-border/60 h-full transition-all group-hover:-translate-y-1 group-hover:shadow-lg">
                 <CardContent className="p-6 flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-700 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400 flex items-center justify-center">
                     <School className="h-6 w-6" />
                   </div>
                   <div>
@@ -209,7 +209,7 @@ export default function HomePage() {
       </section>
 
       {/* ======= FEATURES ======= */}
-      <section className="py-24 bg-slate-50/50">
+      <section className="py-24 bg-slate-50/50 dark:bg-slate-900/40">
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center">
             <Badge className="mb-4 rounded-full bg-primary/10 text-primary border-primary/20" variant="outline">
@@ -306,7 +306,7 @@ export default function HomePage() {
       </section>
 
       {/* ======= ABOUT US ======= */}
-      <section id="about" className="py-24 bg-white">
+      <section id="about" className="py-24 bg-white dark:bg-background">
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <Badge className="mb-4 rounded-full bg-primary/10 text-primary border-primary/20" variant="outline">
@@ -352,7 +352,7 @@ export default function HomePage() {
             transition={{ delay: 0.4 }}
             className="mt-12 max-w-3xl mx-auto text-center"
           >
-            <div className="bg-gradient-to-r from-primary/5 via-amber-50/50 to-emerald-50/50 rounded-3xl p-8 md:p-10 border border-primary/10">
+            <div className="bg-gradient-to-r from-primary/5 via-amber-50/50 to-emerald-50/50 dark:from-primary/10 dark:via-slate-900/60 dark:to-slate-900/60 rounded-3xl p-8 md:p-10 border border-primary/10">
               <Star className="h-8 w-8 text-amber-500 mx-auto mb-4" />
               <p className="text-muted-foreground leading-relaxed">
                 {isAr
@@ -371,7 +371,7 @@ export default function HomePage() {
       </section>
 
       {/* ======= CTA ======= */}
-      <section className="py-24 bg-slate-50/50">
+      <section className="py-24 bg-slate-50/50 dark:bg-slate-900/40">
         <div className="container text-center max-w-2xl">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <Badge className="mb-4 rounded-full bg-primary/10 text-primary border-primary/20" variant="outline">
@@ -404,7 +404,7 @@ export default function HomePage() {
       </section>
 
       {/* ======= FOOTER ======= */}
-      <footer className="border-t py-12 bg-white">
+      <footer className="border-t py-12 bg-white dark:bg-background">
         <div className="container">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getRequestUser } from "@/lib/request-auth"
 import { parentLinkRespondSchema } from "@/lib/validations"
 
 /** Student responds to a parent link invitation */
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id || session.user.role !== "STUDENT") {
+    const user = await getRequestUser(req)
+    if (!user || user.role !== "STUDENT") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     const link = await prisma.parentLink.findUnique({ where: { id: parsed.data.linkId } })
-    if (!link || link.studentId !== session.user.id) {
+    if (!link || link.studentId !== user.id) {
       return NextResponse.json({ error: "Invitation introuvable" }, { status: 404 })
     }
     if (link.status !== "PENDING") {
@@ -39,15 +39,15 @@ export async function POST(req: NextRequest) {
 }
 
 /** List pending invitations for the logged-in student */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id || session.user.role !== "STUDENT") {
+    const user = await getRequestUser(req)
+    if (!user || user.role !== "STUDENT") {
       return NextResponse.json({ invitations: [] })
     }
 
     const invitations = await prisma.parentLink.findMany({
-      where: { studentId: session.user.id, status: "PENDING" },
+      where: { studentId: user.id, status: "PENDING" },
       include: { parent: { select: { id: true, fullName: true, email: true } } },
       orderBy: { createdAt: "desc" },
     })

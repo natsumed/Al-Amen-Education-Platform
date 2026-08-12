@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Globe, ChevronLeft, ChevronRight, Search, Filter, X, LogOut, User } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { ModeToggle } from "@/components/mode-toggle"
 
 export default function BrowsePage() {
   const { user } = useCurrentUser()
@@ -58,7 +59,7 @@ export default function BrowsePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30" dir={isAr ? "rtl" : "ltr"}>
       {/* Navbar */}
-      <nav className="border-b bg-white/80 backdrop-blur-md sticky top-0 z-50">
+      <nav className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <img src="/images/logo.jpeg" alt="Amenallah Edition" className="w-9 h-9 rounded-xl object-cover shadow-sm" />
@@ -68,6 +69,7 @@ export default function BrowsePage() {
             </div>
           </Link>
           <div className="flex items-center gap-2">
+            <ModeToggle />
             <Button variant="outline" size="sm" onClick={() => setLanguage(isAr ? "fr" : "ar")} className="gap-1.5">
               <Globe className="h-3.5 w-3.5" />
               {isAr ? "FR" : "عربي"}

@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   type ViewStyle,
 } from "react-native"
-import { colors, radius, spacing, typography } from "../theme"
+import { radius, spacing, typography, useColors } from "../theme"
 
 type Props = {
   label: string
@@ -25,6 +25,7 @@ export function PrimaryButton({
   variant = "primary",
   style,
 }: Props) {
+  const colors = useColors()
   const isPrimary = variant === "primary"
   const isOutline = variant === "outline"
 
@@ -34,9 +35,13 @@ export function PrimaryButton({
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.base,
-        isPrimary && styles.primary,
-        isOutline && styles.outline,
-        variant === "ghost" && styles.ghost,
+        isPrimary && { backgroundColor: colors.primary },
+        isOutline && {
+          backgroundColor: colors.surface,
+          borderWidth: 1.5,
+          borderColor: colors.primary,
+        },
+        variant === "ghost" && { backgroundColor: "transparent" },
         (disabled || loading) && styles.disabled,
         pressed && { opacity: 0.88 },
         style,
@@ -49,7 +54,7 @@ export function PrimaryButton({
           style={[
             styles.label,
             isPrimary && styles.labelPrimary,
-            !isPrimary && styles.labelAlt,
+            !isPrimary && { color: colors.primary },
           ]}
         >
           {label}
@@ -67,15 +72,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: spacing.xl,
   },
-  primary: { backgroundColor: colors.primary },
-  outline: {
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
-  ghost: { backgroundColor: "transparent" },
   disabled: { opacity: 0.5 },
   label: { ...typography.bodyBold },
   labelPrimary: { color: "#fff" },
-  labelAlt: { color: colors.primary },
 })

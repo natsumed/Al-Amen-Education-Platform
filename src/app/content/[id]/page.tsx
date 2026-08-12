@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Lock, Download, Play, BookOpen, ArrowLeft, Star, Clock, Eye, Globe, FileText, Film, Zap, Share2, LogOut, User } from "lucide-react"
+import { ModeToggle } from "@/components/mode-toggle"
 import { contentTypeLabel, gradeLabel, getYouTubeId } from "@/lib/utils"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useLanguage } from "@/providers/language-provider"
@@ -134,7 +135,7 @@ export default function ContentDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30" dir={isAr ? "rtl" : "ltr"}>
       {/* Navbar */}
-      <nav className="border-b bg-white/80 backdrop-blur-md sticky top-0 z-50">
+      <nav className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/content/browse">
@@ -148,6 +149,7 @@ export default function ContentDetailPage() {
             </Link>
           </div>
           <div className="flex items-center gap-2">
+            <ModeToggle />
             <Button variant="outline" size="sm" onClick={() => setLanguage(isAr ? "fr" : "ar")} className="gap-1.5">
               <Globe className="h-3.5 w-3.5" />
               {isAr ? "FR" : "عربي"}

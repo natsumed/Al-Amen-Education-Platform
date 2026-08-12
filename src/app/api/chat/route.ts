@@ -16,20 +16,20 @@ import { smartOfflineReply } from "@/lib/ai/smart-offline-agent"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-export type ChatMode = "gemini" | "openai" | "offline"
+type ChatMode = "gemini" | "openai" | "offline"
 
 /** Prefer lite models on free tier — less 503 “high demand”. */
 const DEFAULT_GEMINI_PRIMARY = "gemini-3.5-flash-lite"
 const DEFAULT_GEMINI_FALLBACKS =
   "gemini-3.1-flash-lite,gemini-flash-lite-latest,gemini-3.5-flash"
 
-export function resolveChatMode(): ChatMode {
+function resolveChatMode(): ChatMode {
   if (process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY) return "gemini"
   if (process.env.OPENAI_API_KEY) return "openai"
   return "offline"
 }
 
-export function geminiModelChain(): string[] {
+function geminiModelChain(): string[] {
   const primary = (process.env.GEMINI_MODEL || DEFAULT_GEMINI_PRIMARY).trim()
   const extras = (process.env.GEMINI_FALLBACK_MODELS || DEFAULT_GEMINI_FALLBACKS)
     .split(",")
@@ -66,16 +66,6 @@ function offlineStreamResponse(text: string, mode: ChatMode = "offline") {
     stream,
     headers: { "X-Chat-Mode": mode },
   })
-}
-
-function writePlainText(
-  writer: { write: (part: { type: string; id?: string; delta?: string }) => void },
-  text: string
-) {
-  const id = "fallback-text"
-  writer.write({ type: "text-start", id })
-  writer.write({ type: "text-delta", id, delta: text })
-  writer.write({ type: "text-end", id })
 }
 
 function isCapacityError(err: unknown): boolean {
@@ -222,7 +212,10 @@ export async function POST(req: Request) {
           lang === "ar"
             ? "\n\n_(الخدمة السحابية مشغولة — إجابة محلية من قاعدة البيانات.)_"
             : "\n\n_(Gemini saturé temporairement — réponse locale depuis la base.)_"
-        writePlainText(writer, text + note)
+        const id = "fallback-text"
+        writer.write({ type: "text-start", id })
+        writer.write({ type: "text-delta", id, delta: text + note })
+        writer.write({ type: "text-end", id })
       },
       onError: (error) => {
         if (error instanceof Error) {

@@ -32,6 +32,7 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ModeToggle } from "@/components/mode-toggle"
 
 type Props = {
   solid?: boolean
@@ -120,7 +121,7 @@ export function MarketingNavbar({ solid }: Props) {
     <nav
       className={cn(
         "sticky top-0 z-50 border-b",
-        solid ? "bg-background" : "bg-white/90 backdrop-blur-xl shadow-sm"
+        solid ? "bg-background/95 backdrop-blur-xl" : "bg-background/90 backdrop-blur-xl shadow-sm"
       )}
       dir={isAr ? "rtl" : "ltr"}
       onMouseLeave={() => setFeaturesOpen(false)}
@@ -172,6 +173,12 @@ export function MarketingNavbar({ solid }: Props) {
               {isAr ? "الأسعار" : "Tarifs"}
             </Link>
             <Link
+              href="/download"
+              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/60"
+            >
+              {isAr ? "تطبيق أندرويد" : "App Android"}
+            </Link>
+            <Link
               href="/content/browse?sort=newest"
               className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/60"
             >
@@ -187,6 +194,7 @@ export function MarketingNavbar({ solid }: Props) {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          <ModeToggle />
           <Button
             variant="outline"
             size="sm"

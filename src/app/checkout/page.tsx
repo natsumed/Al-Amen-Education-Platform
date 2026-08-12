@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useState } from "react"
+import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,6 +9,7 @@ import { toast } from "sonner"
 import { PRICING_PLANS } from "@/types"
 import { getPlanPrice } from "@/lib/utils"
 import { Loader2, CreditCard } from "lucide-react"
+import { ModeToggle } from "@/components/mode-toggle"
 
 function CheckoutForm() {
   const searchParams = useSearchParams()
@@ -47,7 +49,15 @@ function CheckoutForm() {
   if (!planData) return <div className="text-center py-16"><p>Plan introuvable</p></div>
 
   return (
-    <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex items-center justify-between px-6 py-4">
+        <Link href="/" className="flex items-center gap-2.5">
+          <img src="/images/logo.jpeg" alt="Amenallah Edition" className="w-9 h-9 rounded-xl object-cover" />
+          <span className="font-bold">Amenallah</span>
+        </Link>
+        <ModeToggle />
+      </div>
+      <div className="flex-1 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" />Paiement</CardTitle>
@@ -80,6 +90,7 @@ function CheckoutForm() {
           </Button>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

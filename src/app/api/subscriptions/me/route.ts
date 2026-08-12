@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { getRequestUser } from "@/lib/request-auth"
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) return NextResponse.json({ subscription: null })
+    const user = await getRequestUser(req)
+    if (!user) return NextResponse.json({ subscription: null })
 
     const subscription = await prisma.subscription.findFirst({
-      where: { userId: session.user.id, status: "ACTIVE", endDate: { gt: new Date() } },
+      where: { userId: user.id, status: "ACTIVE", endDate: { gt: new Date() } },
       orderBy: { endDate: "desc" },
     })
 

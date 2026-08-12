@@ -1,23 +1,10 @@
 /** Amenallah mobile design tokens — native only (not for Expo web product UI). */
 
-export const colors = {
-  primary: "#2040e0",
-  primaryDark: "#1630b0",
-  primarySoft: "#e8ecfc",
-  bg: "#f4f6fb",
-  surface: "#ffffff",
-  text: "#0f172a",
-  textSecondary: "#475569",
-  muted: "#64748b",
-  border: "#e2e8f0",
-  success: "#166534",
-  successBg: "#dcfce7",
-  warning: "#92400e",
-  warningBg: "#fef3c7",
-  danger: "#b91c1c",
-  dangerBg: "#fee2e2",
-  amber: "#f59e0b",
-}
+export { lightColors, darkColors, type ThemeColors } from "./palettes"
+export { ThemeProvider, useAppTheme, useColors } from "./theme-context"
+
+/** @deprecated Prefer `useColors()` for theme-reactive UI. Kept as light default for static StyleSheets. */
+export { lightColors as colors } from "./palettes"
 
 export const spacing = {
   xs: 4,
@@ -36,12 +23,39 @@ export const radius = {
   full: 999,
 }
 
+export const fonts = {
+  regular: "Cairo_400Regular",
+  medium: "Cairo_500Medium",
+  semibold: "Cairo_600SemiBold",
+  bold: "Cairo_700Bold",
+  extrabold: "Cairo_800ExtraBold",
+}
+
 export const typography = {
-  brand: { fontSize: 28, fontWeight: "800" as const, letterSpacing: -0.5 },
-  h1: { fontSize: 24, fontWeight: "700" as const },
-  h2: { fontSize: 18, fontWeight: "700" as const },
-  body: { fontSize: 16, fontWeight: "400" as const },
-  bodyBold: { fontSize: 16, fontWeight: "600" as const },
-  caption: { fontSize: 13, fontWeight: "500" as const },
-  tiny: { fontSize: 11, fontWeight: "600" as const },
+  brand: { fontFamily: fonts.extrabold, fontSize: 28, letterSpacing: -0.5 },
+  h1: { fontFamily: fonts.bold, fontSize: 24 },
+  h2: { fontFamily: fonts.bold, fontSize: 18 },
+  h3: { fontFamily: fonts.semibold, fontSize: 16 },
+  body: { fontFamily: fonts.regular, fontSize: 16 },
+  bodyBold: { fontFamily: fonts.semibold, fontSize: 16 },
+  caption: { fontFamily: fonts.medium, fontSize: 13 },
+  tiny: { fontFamily: fonts.semibold, fontSize: 11 },
+}
+
+/** Subtle single-layer shadow for cards (avoid heavy multi-layer stacks). */
+export const shadow = {
+  card: {
+    shadowColor: "#1e293b",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  floating: {
+    shadowColor: "#1e293b",
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getRequestUser } from "@/lib/request-auth"
 import { updateProfileSchema } from "@/lib/validations"
 
 const meSelect = {
@@ -17,15 +17,15 @@ const meSelect = {
   createdAt: true,
 } as const
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const requestUser = await getRequestUser(req)
+    if (!requestUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: requestUser.id },
       select: meSelect,
     })
 
@@ -58,8 +58,8 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const requestUser = await getRequestUser(req)
+    if (!requestUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -71,7 +71,7 @@ export async function PATCH(req: NextRequest) {
 
     const data = parsed.data
     const user = await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: requestUser.id },
       data: {
         ...(data.fullName !== undefined ? { fullName: data.fullName } : {}),
         ...(data.phone !== undefined ? { phone: data.phone || null } : {}),

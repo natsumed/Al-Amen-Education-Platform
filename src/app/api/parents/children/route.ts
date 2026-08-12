@@ -22,7 +22,24 @@ export async function GET(req: NextRequest) {
     where: { parentId: user.id },
     include: {
       student: {
-        select: { id: true, publicId: true, fullName: true, email: true, avatarUrl: true },
+        select: {
+          id: true,
+          publicId: true,
+          fullName: true,
+          email: true,
+          avatarUrl: true,
+          progress: {
+            orderBy: { lastAccessed: "desc" },
+            take: 10,
+            select: {
+              id: true,
+              progressPercent: true,
+              completed: true,
+              lastAccessed: true,
+              content: { select: { id: true, titleFr: true, titleAr: true } },
+            },
+          },
+        },
       },
     },
   })

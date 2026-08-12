@@ -19,7 +19,8 @@ export async function OPTIONS() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const parsed = loginSchema.safeParse(body)
+    const rawEmail = typeof body?.email === "string" ? body.email.trim().toLowerCase() : body?.email
+    const parsed = loginSchema.safeParse({ ...body, email: rawEmail })
     if (!parsed.success) {
       return NextResponse.json({ error: "Email ou mot de passe invalide" }, { status: 400, headers: corsHeaders })
     }
