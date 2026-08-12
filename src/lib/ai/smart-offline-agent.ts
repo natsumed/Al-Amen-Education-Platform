@@ -75,7 +75,7 @@ export function classifyOfflineIntent(userText: string, role: string): OfflineIn
   if (/\b(paye?r?|paiement|دفع|virement|espèces|نقد|تحويل)\b/i.test(q)) return "payment_help"
 
   if (
-    /\b(lier|lien parent|invit|ربط|ولي أمر|n°\s*compte|numero compte|publicid)\b/i.test(q) ||
+    /\b(lier|lien parent|invit|ربط|ولي\s*ال?أمر|n°\s*compte|numero compte|publicid)\b/i.test(q) ||
     (role === "PARENT" &&
       /\b(enfant|طفل)\b/i.test(q) &&
       /\b(ajouter|comment|كيف|ربط)\b/i.test(q) &&
