@@ -43,20 +43,10 @@ export async function canDownload(
   content: Pick<Content, "id" | "isFree">
 ): Promise<boolean> {
   if (userRole === "PARENT") return false
-  // Admins always can download
+  // Keep source media view-only for customers. Admins can still download for
+  // moderation and content-management purposes.
   if (userRole === "ADMIN") return true
-
-  // Downloads require an active subscription (not just one-time purchase)
-  const subscription = await prisma.subscription.findFirst({
-    where: {
-      userId,
-      status: "ACTIVE",
-      endDate: { gt: new Date() },
-      plan: { not: "FREE" },
-    },
-  })
-
-  return subscription !== null
+  return false
 }
 
 export async function getContentAccessInfo(

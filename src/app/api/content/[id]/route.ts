@@ -21,9 +21,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!content) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     const access = await getContentAccessInfo(user?.id || null, user?.role || null, params.id)
-    const safe = sanitizeContentForAccess(content, access.canAccess)
+    // Never expose external media URLs to anonymous visitors. Even free media
+    // is resolved through the authenticated media endpoint below.
+    const safe = sanitizeContentForAccess(content, Boolean(user) && access.canAccess)
 
-    return NextResponse.json({ ...safe, access, mediaLocked: !access.canAccess })
+    return NextResponse.json({ ...safe, access, mediaLocked: !user || !access.canAccess })
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })
   }

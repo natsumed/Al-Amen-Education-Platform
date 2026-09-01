@@ -18,6 +18,7 @@ import { contentTypeLabel, gradeLabel, getYouTubeId } from "@/lib/utils"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useLanguage } from "@/providers/language-provider"
 import { toast } from "sonner"
+import { ContentProtection } from "@/components/content/content-protection"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -124,16 +125,19 @@ export default function ContentDetailPage() {
   const description = isAr ? content.descriptionAr : content.descriptionFr
   const canAccess = Boolean(content.access?.canAccess)
   const canDownload = Boolean(content.access?.canDownload)
-  const videoUrl = media?.youtubeUrl || (canAccess ? content.youtubeUrl : null)
-  const pdfUrl = media?.pdfUrl || (canAccess ? content.pdfUrl : null)
-  const gifUrl = media?.gifUrl || (canAccess ? content.gifUrl : null)
+  // Media is only populated by the authenticated, access-controlled endpoint.
+  // Do not fall back to URLs from the public detail response.
+  const videoUrl = media?.youtubeUrl || null
+  const pdfUrl = media?.pdfUrl || null
+  const gifUrl = media?.gifUrl || null
   const ytId = videoUrl ? getYouTubeId(videoUrl) : null
   const isDriveVideo = Boolean(videoUrl && videoUrl.includes("drive.google.com"))
   const TypeIcon = TYPE_ICONS[content.contentType] || Film
   const avgRating = reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : null
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30" dir={isAr ? "rtl" : "ltr"}>
+    <ContentProtection enabled={canAccess}>
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/30" dir={isAr ? "rtl" : "ltr"}>
       {/* Navbar */}
       <nav className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
@@ -570,6 +574,7 @@ export default function ContentDetailPage() {
           <p>© 2024 {isAr ? "أمان الله للنشر و التوزيع" : "Amenallah Edition"}. {isAr ? "جميع الحقوق محفوظة." : "Tous droits réservés."}</p>
         </div>
       </footer>
-    </div>
+      </div>
+    </ContentProtection>
   )
 }

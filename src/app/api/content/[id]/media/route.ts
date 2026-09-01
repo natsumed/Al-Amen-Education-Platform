@@ -67,7 +67,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       // Hint for clients: Drive preview URLs open in iframe / WebView
       source: "external",
       note: "Media URLs are ready for Drive share links when provided by admins.",
-    })
+    }, { headers: { "Cache-Control": "private, no-store" } })
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })
   }
