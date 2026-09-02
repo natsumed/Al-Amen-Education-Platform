@@ -20,6 +20,10 @@ services:
     environment:
       NODE_ENV: production
       AUTH_TRUST_HOST: "true"
+      # Auth.js must generate redirects for the public domain, never the
+      # container hostname used on the private Docker network.
+      AUTH_URL: https://amanallahedition.com
+      NEXTAUTH_URL: https://amanallahedition.com
       DATABASE_URL: postgresql://platform:${PROD_POSTGRES_PASSWORD}@prod-db:5432/platform?schema=public
       AUTH_SECRET: ${PROD_AUTH_SECRET:?PROD_AUTH_SECRET is required}
       NEXT_PUBLIC_APP_URL: https://amanallahedition.com
@@ -61,6 +65,8 @@ services:
     environment:
       NODE_ENV: production
       AUTH_TRUST_HOST: "true"
+      AUTH_URL: https://staging.amanallahedition.com
+      NEXTAUTH_URL: https://staging.amanallahedition.com
       DATABASE_URL: postgresql://platform:${STAGING_POSTGRES_PASSWORD}@staging-db:5432/platform?schema=public
       AUTH_SECRET: ${STAGING_AUTH_SECRET:?STAGING_AUTH_SECRET is required}
       NEXT_PUBLIC_APP_URL: https://staging.amanallahedition.com
