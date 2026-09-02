@@ -7,7 +7,18 @@ export default async function middleware(req: NextRequest) {
   const pathname = nextUrl.pathname
 
   // Get token without Prisma - Edge Runtime compatible
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET })
+  // Auth.js uses the __Secure- cookie name on HTTPS. The middleware runs
+  // independently of the auth handler, so it must make the same choice or it
+  // will miss a valid production session and redirect every dashboard request
+  // back to /login.
+  const secureCookie =
+    nextUrl.protocol === "https:" ||
+    req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() === "https"
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+    secureCookie,
+  })
   
   const isLoggedIn = !!token
   const userRole = token?.role as string | undefined
