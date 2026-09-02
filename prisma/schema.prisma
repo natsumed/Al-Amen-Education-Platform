@@ -3,12 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// Enums removed — SQLite uses plain String fields
-// TypeScript string literal unions in src/types/index.ts provide type safety
+// String fields intentionally remain application-level unions in src/types/index.ts.
 
 model User {
   id            String    @id @default(uuid())

@@ -1,19 +1,99 @@
-# Deploy production (manual / on release tag)
-# Enable after PostgreSQL + host secrets are ready. See docs/CICD.md.
-
 name: Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: Deploy the verified image to production after staging
+        required: true
+        default: false
+        type: boolean
   release:
     types: [published]
 
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  # GHCR repository names must be lowercase.
+  IMAGE_NAME: ghcr.io/natsumed/al-amen-education-platform
+
 jobs:
-  notice:
+  build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: platform
+          POSTGRES_USER: platform
+          POSTGRES_PASSWORD: platform
+        ports: [5432:5432]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://platform:platform@localhost:5432/platform?schema=public
+      AUTH_SECRET: deploy-ci-only-secret
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - name: Deployment not configured yet
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npm test
+      - run: npx tsc --noEmit
+      - run: npm run build
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy immutable image to staging
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "CD is documented in docs/CICD.md."
-          echo "Connect Vercel (or your host), set production secrets, then replace this job with a real deploy."
-          echo "Do not put AUTH_SECRET, DATABASE_URL, or payment keys in the repository."
+          install -m 600 /dev/null deploy_key
+          printf '%s\n' "$DEPLOY_SSH_KEY" > deploy_key
+          ssh -i deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n env IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} /opt/amenallah/deploy.sh ${IMAGE_TAG}"
+          rm -f deploy_key
+
+  deploy-production:
+    needs: deploy-staging
+    if: github.event_name == 'release' || inputs.deploy_production == true
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy the same verified image to production
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          install -m 600 /dev/null deploy_key
+          printf '%s\n' "$DEPLOY_SSH_KEY" > deploy_key
+          ssh -i deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n env IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} /opt/amenallah/deploy.sh ${IMAGE_TAG}"
+          rm -f deploy_key

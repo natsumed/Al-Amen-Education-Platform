@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+coverage
+prisma/*.db
+mobile/node_modules
+mobile/.expo
+mobile/android
+mobile/ios
+public/downloads/*.apk
+*.log

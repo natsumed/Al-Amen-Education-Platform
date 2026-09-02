@@ -21,9 +21,9 @@ git checkout -b feature/ma-fonctionnalite
 # 4. Installer les dépendances
 npm install
 
-# 5. Générer la base de données SQLite
+# 5. Configurer PostgreSQL avec `.env.local`, puis générer le client
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy
 
 # 6. Peupler avec les données de test
 npx tsx prisma/seed.ts
@@ -188,7 +188,7 @@ Tu travailles sur des branches `feature/…` (API). Ton rôle : **API, base de d
 
 8. **Optimisation base de données** :
    - Index manquants sur les requêtes fréquentes
-   - Migration vers PostgreSQL pour la production
+   - Migrations PostgreSQL versionnées pour tous les environnements
    - Mise en cache avec Redis (Upstash)
 
 9. **Système de permissions avancé** :
@@ -202,7 +202,7 @@ Tu travailles sur des branches `feature/…` (API). Ton rôle : **API, base de d
     - Rate limiting par clé API
 
 #### Priorité Basse
-11. **Recherche full-text** — Au-delà du `contains` SQLite :
+11. **Recherche full-text** — Au-delà du `contains` PostgreSQL :
     - Intégrer un moteur de recherche (Meilisearch, Typesense)
     - Indexation du contenu en arabe et français
 
@@ -243,7 +243,7 @@ Tu travailles sur des branches `feature/…` (API). Ton rôle : **API, base de d
 
 ### Stack backend
 - **Next.js API Routes** (même serveur que le frontend)
-- **Prisma ORM** (SQLite en dev, PostgreSQL en prod)
+- **Prisma ORM** (PostgreSQL)
 - **Auth.js v5** (JWT sessions, credentials + OAuth)
 - **Zod** (validation des entrées)
 - **bcryptjs** (hashage des mots de passe)
@@ -358,7 +358,7 @@ Workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) :
 - `web-lint` — `npm run lint`
 - `web-typecheck` — `npx tsc --noEmit`
 - `web-test` — `npm test` (Vitest)
-- `web-build` — `prisma db push` + `npm run build` (env CI factice)
+- `web-build` — `prisma migrate deploy` + `npm run build` (env CI factice)
 - `mobile-typecheck` — `tsc` dans `/mobile`
 
 La PR ne doit être mergée que si tous les checks sont verts.
@@ -397,5 +397,5 @@ Settings → Branches → Branch protection rule sur `main` :
 |-------|----------|---------|
 | **Actuelle** | ✅ Landing, auth, browse, content detail, chatbot UI | ✅ Auth, CRUD content, access control, seed, agent tools |
 | **Phase 2** | Checkout UI, reusable players, notifications | Paiements réels (Konnect/Flouci), upload fichiers |
-| **Phase 3** | Gamification, recherche avancée, mode sombre | Tests E2E, sécurité, migration PostgreSQL |
+| **Phase 3** | Gamification, recherche avancée, mode sombre | Tests E2E et sécurité avancée |
 | **Phase 4** | PWA, accessibilité, iOS | Recherche full-text, analytiques, CD production |

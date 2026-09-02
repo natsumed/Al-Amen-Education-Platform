@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const { grade, subject, contentType, isFree, search, page = 1, limit = 12 } = filters.data || {}
 
-    // SQLite does not support mode: "insensitive" — use contains only (case-sensitive on SQLite)
+    // Keep filtering portable across the supported PostgreSQL deployment.
     const where: Record<string, unknown> = {
       status: "PUBLISHED",
       ...(grade && { grade }),

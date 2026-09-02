@@ -1,0 +1,9 @@
+[Unit]
+Description=Amenallah encrypted database and deployment backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/amenallah
+ExecStart=/opt/amenallah/backup.sh

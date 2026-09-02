@@ -11,25 +11,25 @@ Runs on every **pull request** to `main` and on **push** to `main`.
 | `web-lint` | ESLint |
 | `web-typecheck` | TypeScript (`tsc --noEmit`) |
 | `web-test` | Vitest unit tests |
-| `web-build` | Prisma generate + `db push` (SQLite CI file) + `next build` |
+| `web-build` | Prisma generate + PostgreSQL migration + `next build` |
 | `mobile-typecheck` | Typecheck Expo app under `/mobile` |
 
-CI uses dummy env only (`AUTH_SECRET`, `DATABASE_URL=file:./ci.db`). No real secrets.
+CI uses an ephemeral PostgreSQL service and dummy env only. No real secrets.
 
-## Continuous Deployment (planned)
+## Continuous Deployment
 
 | Stage | Trigger | Action |
 |-------|---------|--------|
 | Local | — | `npm run dev` / Expo |
-| Preview | PR green (optional) | Connect repo to Vercel → preview URL per PR |
-| Production | Git tag `v*` or manual approve | Host with **PostgreSQL**, set secrets in dashboard, run `prisma migrate deploy` |
+| Staging | Manual deploy workflow | Pull the immutable GHCR image and run migrations on the protected staging stack |
+| Production | Release or manual approval | Deploy the same verified image after the staging job and environment approval |
 
 ### Production secrets (host / GitHub Environment — never commit)
 
 - `AUTH_SECRET`
 - `DATABASE_URL` (Postgres)
 - `GEMINI_API_KEY` (optional chatbot)
-- `RESEND_API_KEY` / `EMAIL_FROM` (optional)
+- `RESEND_API_KEY` / `RESEND_FROM_EMAIL` (optional)
 - Payment keys when Konnect/Flouci go live
 
 ### Recommended GitHub settings
@@ -42,6 +42,6 @@ CI uses dummy env only (`AUTH_SECRET`, `DATABASE_URL=file:./ci.db`). No real sec
 ## Manual release checklist (production)
 
 1. CI green on `main`
-2. `DATABASE_URL` points to Postgres; run migrations
-3. Env vars set; smoke test login + browse + parent link
-4. Tag `vX.Y.Z` and deploy
+2. Publish or manually select the release workflow
+3. Staging health checks and smoke tests pass
+4. Approve the protected production environment

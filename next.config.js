@@ -9,7 +9,14 @@ const nextConfig = {
     ],
   },
   experimental: {
-    serverActions: { allowedOrigins: ['localhost:3000'] },
+    serverActions: {
+      allowedOrigins: [
+        'localhost:3000',
+        'amanallahedition.com',
+        'www.amanallahedition.com',
+        'staging.amanallahedition.com',
+      ],
+    },
   },
   async headers() {
     return [

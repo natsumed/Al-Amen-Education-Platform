@@ -1,0 +1,110 @@
+services:
+  prod-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: platform
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: ${PROD_POSTGRES_PASSWORD:?PROD_POSTGRES_PASSWORD is required}
+    volumes:
+      - prod_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform -d platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prod-app:
+    image: ${IMAGE_NAME:?IMAGE_NAME is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      AUTH_TRUST_HOST: "true"
+      DATABASE_URL: postgresql://platform:${PROD_POSTGRES_PASSWORD}@prod-db:5432/platform?schema=public
+      AUTH_SECRET: ${PROD_AUTH_SECRET:?PROD_AUTH_SECRET is required}
+      NEXT_PUBLIC_APP_URL: https://amanallahedition.com
+      NEXT_PUBLIC_APP_NAME: Amenallah Edition
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+    depends_on:
+      prod-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://' + process.env.HOSTNAME + ':3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  staging-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: platform
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:?STAGING_POSTGRES_PASSWORD is required}
+    volumes:
+      - staging_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform -d platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  staging-app:
+    image: ${IMAGE_NAME:?IMAGE_NAME is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      AUTH_TRUST_HOST: "true"
+      DATABASE_URL: postgresql://platform:${STAGING_POSTGRES_PASSWORD}@staging-db:5432/platform?schema=public
+      AUTH_SECRET: ${STAGING_AUTH_SECRET:?STAGING_AUTH_SECRET is required}
+      NEXT_PUBLIC_APP_URL: https://staging.amanallahedition.com
+      NEXT_PUBLIC_APP_NAME: Amenallah Edition (Staging)
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-}
+      RESEND_API_KEY: ""
+      RESEND_FROM_EMAIL: ""
+    depends_on:
+      staging-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://' + process.env.HOSTNAME + ':3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: amanallahedition.com
+      STAGING_DOMAIN: staging.amanallahedition.com
+      TLS_EMAIL: ${TLS_EMAIL:?TLS_EMAIL is required}
+      STAGING_BASIC_AUTH_USER: ${STAGING_BASIC_AUTH_USER:?STAGING_BASIC_AUTH_USER is required}
+      STAGING_BASIC_AUTH_HASH: ${STAGING_BASIC_AUTH_HASH:?STAGING_BASIC_AUTH_HASH is required}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      prod-app:
+        condition: service_healthy
+      staging-app:
+        condition: service_healthy
+
+volumes:
+  prod_db_data:
+  staging_db_data:
+  caddy_data:
+  caddy_config:

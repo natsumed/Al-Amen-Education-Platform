@@ -3,6 +3,16 @@ import { prisma } from "@/lib/prisma"
 import { getContentAccessInfo } from "@/lib/access-control"
 import { getRequestUser } from "@/lib/request-auth"
 import { normalizeExternalMediaUrl, parseFileUrls } from "@/lib/content-media"
+import { getSignedUrl } from "@/lib/storage"
+
+async function resolveMediaUrl(value: string | null | undefined): Promise<string | null> {
+  if (!value) return null
+  const normalized = normalizeExternalMediaUrl(value)
+  if (!normalized) return null
+  if (!/^https?:\/\//i.test(normalized)) return getSignedUrl(normalized)
+  if (normalized.includes("/storage/v1/object/public/content/")) return getSignedUrl(normalized)
+  return normalized
+}
 
 /**
  * Gated media resolver — call after the client knows it has access.
@@ -42,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       )
     }
 
-    const files = parseFileUrls(content.fileUrls).map((u) => normalizeExternalMediaUrl(u)).filter(Boolean)
+    const files = (await Promise.all(parseFileUrls(content.fileUrls).map(resolveMediaUrl))).filter(Boolean)
 
     return NextResponse.json({
       contentId: content.id,
@@ -50,8 +60,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       canDownload: access.canDownload,
       media: {
         youtubeUrl: normalizeExternalMediaUrl(content.youtubeUrl),
-        pdfUrl: normalizeExternalMediaUrl(content.pdfUrl),
-        gifUrl: normalizeExternalMediaUrl(content.gifUrl),
+        pdfUrl: await resolveMediaUrl(content.pdfUrl),
+        gifUrl: await resolveMediaUrl(content.gifUrl),
         fileUrls: files,
       },
       // Hint for clients: Drive preview URLs open in iframe / WebView

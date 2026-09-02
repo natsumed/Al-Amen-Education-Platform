@@ -22,8 +22,7 @@ export async function uploadFile(file: File, path: string): Promise<string | nul
     return null
   }
 
-  const { data: urlData } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(data.path)
-  return urlData.publicUrl
+  return data.path
 }
 
 export async function uploadBuffer(
@@ -46,8 +45,7 @@ export async function uploadBuffer(
     return null
   }
 
-  const { data: urlData } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(data.path)
-  return urlData.publicUrl
+  return data.path
 }
 
 export async function getSignedUrl(path: string, expiresInSeconds = 300): Promise<string | null> {
@@ -57,6 +55,8 @@ export async function getSignedUrl(path: string, expiresInSeconds = 300): Promis
   const relativePath = path.includes("/storage/v1/object/public/")
     ? path.split(`/storage/v1/object/public/${BUCKET}/`)[1]
     : path
+
+  if (!relativePath || /^https?:\/\//i.test(relativePath)) return null
 
   const { data, error } = await supabaseAdmin.storage
     .from(BUCKET)

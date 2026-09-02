@@ -9,9 +9,10 @@ Cours vidéo, livres PDF, séries d'exercices et animations éducatives — en a
 # Installer les dépendances
 npm install
 
-# Générer la base de données SQLite (aucune configuration externe requise)
+# Démarrer PostgreSQL localement, puis générer le client et appliquer le schéma
+npm run db:up
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy
 
 # Peupler avec des données de test
 npx tsx prisma/seed.ts
@@ -80,7 +81,7 @@ Les PR vers `main` doivent passer lint, typecheck, Vitest, build et typecheck mo
 | Framework | Next.js 14 (App Router) |
 | Langage | TypeScript (strict) |
 | Styling | Tailwind CSS + shadcn/ui |
-| Base de données | SQLite (dev) / PostgreSQL (prod) |
+| Base de données | PostgreSQL |
 | ORM | Prisma |
 | Authentification | Auth.js v5 |
 | Email | Resend |
