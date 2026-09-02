@@ -7,31 +7,18 @@ on:
     branches: [main]
 
 env:
-  DATABASE_URL: "postgresql://platform:platform@localhost:5432/platform?schema=public"
+  DATABASE_URL: "file:./ci.db"
   AUTH_SECRET: "ci-test-secret-not-for-production"
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
   web-lint:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: platform
-          POSTGRES_USER: platform
-          POSTGRES_PASSWORD: platform
-        ports: [5432:5432]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
           cache: npm
       - run: npm ci
       - run: npx prisma generate
@@ -39,24 +26,11 @@ jobs:
 
   web-typecheck:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: platform
-          POSTGRES_USER: platform
-          POSTGRES_PASSWORD: platform
-        ports: [5432:5432]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
           cache: npm
       - run: npm ci
       - run: npx prisma generate
@@ -64,52 +38,26 @@ jobs:
 
   web-test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: platform
-          POSTGRES_USER: platform
-          POSTGRES_PASSWORD: platform
-        ports: [5432:5432]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
           cache: npm
       - run: npm ci
       - run: npx prisma generate
-      - run: npx prisma migrate deploy
+      - run: npx prisma db push --skip-generate
       - run: npm test
 
   web-build:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: platform
-          POSTGRES_USER: platform
-          POSTGRES_PASSWORD: platform
-        ports: [5432:5432]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
           cache: npm
       - run: npm ci
       - run: npx prisma generate
-      - run: npx prisma migrate deploy
+      - run: npx prisma db push --skip-generate
       - run: npm run build
