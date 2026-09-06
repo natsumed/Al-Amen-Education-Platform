@@ -35,7 +35,7 @@ const PAGE_SIZE = 20
 const emptyFilters: Filters = { grade: "", subject: "", contentType: "", freeOnly: false }
 
 export function BrowseScreen({ navigation, route }: Props) {
-  const { token, language, setLanguage, logout } = useAuth()
+  const { token, language } = useAuth()
   const colors = useColors()
   const styles = useMemo(() => makeStyles(colors), [colors])
   const [items, setItems] = useState<ContentItem[]>([])
@@ -137,8 +137,6 @@ export function BrowseScreen({ navigation, route }: Props) {
         <AppHeader
           title={t("explore", language)}
           language={language}
-          onToggleLanguage={() => setLanguage(language === "ar" ? "fr" : "ar")}
-          onLogout={logout}
         />
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>

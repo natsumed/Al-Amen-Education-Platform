@@ -15,7 +15,7 @@ import type { LearnerTabParamList } from "../../navigation/types"
 import { colors, radius, spacing, typography } from "../../theme"
 
 export function ProgressScreen() {
-  const { language, setLanguage, logout } = useAuth()
+  const { language } = useAuth()
   const navigation = useNavigation<BottomTabNavigationProp<LearnerTabParamList>>()
   const { items, loading } = useProgress()
 
@@ -39,12 +39,7 @@ export function ProgressScreen() {
 
   return (
     <Screen scroll>
-      <AppHeader
-        title={t("progress", language)}
-        language={language}
-        onToggleLanguage={() => setLanguage(language === "ar" ? "fr" : "ar")}
-        onLogout={logout}
-      />
+      <AppHeader title={t("progress", language)} language={language} />
 
       <View style={styles.stats}>
         <Stat value={String(items.length)} label={t("statAccessed", language)} />

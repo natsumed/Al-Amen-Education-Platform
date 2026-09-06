@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import * as SplashScreen from "expo-splash-screen"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { AuthProvider } from "./src/lib/auth-context"
@@ -23,14 +23,17 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [fontsLoaded])
 
-  const onLayout = useCallback(() => {
-    if (ready) SplashScreen.hideAsync().catch(() => {})
+  // Hide splash as soon as JS is ready — do not wait for onLayout
+  // (SplashScreenManager can block layout while the splash is still showing).
+  useEffect(() => {
+    if (!ready) return
+    void SplashScreen.hideAsync().catch(() => {})
   }, [ready])
 
   if (!ready) return null
 
   return (
-    <SafeAreaProvider onLayout={onLayout}>
+    <SafeAreaProvider>
       <ErrorBoundary>
         <ThemeProvider>
           <AuthProvider>
