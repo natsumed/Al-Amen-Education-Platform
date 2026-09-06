@@ -44,7 +44,7 @@ export function ThemeToggle({ label }: Props) {
       ]}
     >
       <View style={styles.icons} pointerEvents="none">
-        <Ionicons name="sunny" size={14} color={isDark ? colors.muted : "#f59e0b"} />
+        <Ionicons name="sunny" size={14} color={isDark ? colors.muted : colors.accent} />
         <Ionicons name="moon" size={14} color={isDark ? colors.primary : colors.muted} />
       </View>
       <Animated.View
@@ -60,7 +60,7 @@ export function ThemeToggle({ label }: Props) {
         <Ionicons
           name={isDark ? "moon" : "sunny"}
           size={16}
-          color={isDark ? colors.primary : "#f59e0b"}
+          color={isDark ? colors.primary : colors.accent}
         />
       </Animated.View>
     </Pressable>

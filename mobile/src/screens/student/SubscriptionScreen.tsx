@@ -2,7 +2,6 @@ import React, { useCallback, useState } from "react"
 import { Linking, StyleSheet, Text, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useFocusEffect } from "@react-navigation/native"
-import { AppHeader } from "../../components/AppHeader"
 import { PrimaryButton } from "../../components/PrimaryButton"
 import { Screen } from "../../components/Screen"
 import { api, getApiBaseUrl, type Subscription } from "../../lib/api"
@@ -28,7 +27,7 @@ const PLANS: Plan[] = [
 ]
 
 export function SubscriptionScreen() {
-  const { user, token, language, setLanguage, logout } = useAuth()
+  const { user, token, language } = useAuth()
   const [subscription, setSubscription] = useState<Subscription | null>(null)
 
   useFocusEffect(
@@ -53,13 +52,6 @@ export function SubscriptionScreen() {
 
   return (
     <Screen scroll>
-      <AppHeader
-        title={t("subscription", language)}
-        language={language}
-        onToggleLanguage={() => setLanguage(language === "ar" ? "fr" : "ar")}
-        onLogout={logout}
-      />
-
       <View style={[styles.current, shadow.card, subscription ? styles.active : styles.inactive]}>
         <Ionicons
           name={subscription ? "shield-checkmark" : "lock-closed"}

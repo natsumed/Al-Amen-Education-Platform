@@ -36,7 +36,7 @@ function resolveThumb(url?: string | null): string | null {
 }
 
 export function StudentHomeScreen() {
-  const { user, token, language, setLanguage, logout } = useAuth()
+  const { user, token, language } = useAuth()
   const navigation = useNavigation<BottomTabNavigationProp<LearnerTabParamList>>()
   const online = useIsOnline()
   const colors = useColors()
@@ -98,7 +98,6 @@ export function StudentHomeScreen() {
     : 0
   const inProgress = progress.filter((item) => !item.completed)
   const completed = progress.filter((item) => item.completed).length
-  const roleLabel = user?.role === "TEACHER" ? t("teacher", language) : t("student", language)
 
   const respond = async (linkId: string, action: "ACCEPT" | "REJECT") => {
     if (!token) return
@@ -127,38 +126,25 @@ export function StudentHomeScreen() {
         }
       >
         <View style={styles.pad}>
-          <AppHeader
-            title={t("brand", language)}
-            language={language}
-            onToggleLanguage={() => setLanguage(language === "ar" ? "fr" : "ar")}
-            onLogout={logout}
-          />
+          <AppHeader title={t("brand", language)} language={language} />
           <OfflineBanner visible={!online} language={language} mode="network" />
         </View>
 
         <View style={styles.pad}>
           <View style={[styles.hero, shadow.card]}>
-            <View style={styles.rolePill}>
-              <Ionicons name="school" size={12} color={colors.primary} />
-              <Text style={styles.roleText}>{roleLabel}</Text>
-            </View>
             <Text style={styles.greeting}>
               {greeting(language)}, {user?.fullName?.split(" ")[0]}
             </Text>
             <Text style={styles.greetingSub}>{t("continueLearning", language)}</Text>
 
-            <Pressable style={styles.subCard} onPress={openSubscription}>
-              <View style={styles.subInfo}>
-                <Text style={styles.subLabel}>
-                  {subscription ? t("activePlan", language) : t("freePlan", language)}
-                </Text>
-                <Text style={styles.subValue}>
-                  {subscription
-                    ? `${subscription.plan.replaceAll("_", " ")} · ${daysLeft} ${t("daysRemaining", language)}`
-                    : t("subscribe", language)}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+            <Pressable style={styles.subRow} onPress={openSubscription}>
+              <Ionicons name="card-outline" size={18} color={colors.primary} />
+              <Text style={styles.subValue} numberOfLines={1}>
+                {subscription
+                  ? `${subscription.plan.replaceAll("_", " ")} · ${daysLeft} ${t("daysRemaining", language)}`
+                  : t("subscribe", language)}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.primary} />
             </Pressable>
           </View>
         </View>
@@ -241,15 +227,6 @@ export function StudentHomeScreen() {
                 />
               ))}
             </ScrollView>
-          </View>
-        ) : null}
-
-        {user?.publicId ? (
-          <View style={styles.pad}>
-            <View style={styles.idBox}>
-              <Text style={styles.idLabel}>{t("accountNumber", language)}</Text>
-              <Text style={styles.idValue}>{user.publicId}</Text>
-            </View>
           </View>
         ) : null}
       </ScrollView>
@@ -340,38 +317,24 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
   },
-  rolePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    alignSelf: "flex-start",
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-    marginBottom: spacing.md,
-  },
-  roleText: { ...typography.tiny, color: colors.primary },
   greeting: { ...typography.h1, color: colors.text },
   greetingSub: { ...typography.body, color: colors.textSecondary, marginTop: spacing.xs },
-  subCard: {
+  subRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.primarySoft,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+    gap: spacing.sm,
     marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  subInfo: { flex: 1 },
-  subLabel: { ...typography.tiny, color: colors.primary },
-  subValue: { ...typography.bodyBold, color: colors.text, marginTop: 2 },
+  subValue: { ...typography.bodyBold, color: colors.text, flex: 1 },
   statsRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
   stat: {
     flex: 1,
     alignItems: "center",
     paddingVertical: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -385,7 +348,7 @@ function makeStyles(colors: ThemeColors) {
   seeAll: { ...typography.caption, color: colors.primary },
   rail: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs },
   tile: {
-    width: 180,
+    width: 220,
     marginRight: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -394,7 +357,7 @@ function makeStyles(colors: ThemeColors) {
     padding: spacing.md,
   },
   tileThumb: {
-    height: 92,
+    height: 120,
     borderRadius: radius.md,
     backgroundColor: colors.primarySoft,
     alignItems: "center",

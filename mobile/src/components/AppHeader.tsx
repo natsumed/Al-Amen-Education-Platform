@@ -8,12 +8,19 @@ type Props = {
   title: string
   subtitle?: string
   language: Language
-  onToggleLanguage: () => void
+  onToggleLanguage?: () => void
   onLogout?: () => void
   showLogo?: boolean
+  /** Default off — use Settings for theme to avoid chrome on every screen */
   showThemeToggle?: boolean
+  /** Default off — use Settings / Profile for language */
+  showLanguageToggle?: boolean
 }
 
+/**
+ * Compact brand header. Prefer minimal actions on learning tabs;
+ * put theme/lang/logout on Profile / Settings.
+ */
 export function AppHeader({
   title,
   subtitle,
@@ -21,10 +28,13 @@ export function AppHeader({
   onToggleLanguage,
   onLogout,
   showLogo = true,
-  showThemeToggle = true,
+  showThemeToggle = false,
+  showLanguageToggle = false,
 }: Props) {
   const colors = useColors()
   const rtl = isRTL(language)
+  const hasActions = showThemeToggle || (showLanguageToggle && onToggleLanguage) || onLogout
+
   return (
     <View style={[styles.header, rtl && styles.headerRtl]}>
       <View style={[styles.left, rtl && styles.leftRtl]}>
@@ -36,31 +46,39 @@ export function AppHeader({
           />
         ) : null}
         <View style={styles.titles}>
-          <Text style={[styles.title, { color: colors.primary }, rtl && styles.rtlText]}>{title}</Text>
+          <Text style={[styles.title, { color: colors.primary }, rtl && styles.rtlText]} numberOfLines={1}>
+            {title}
+          </Text>
           {subtitle ? (
-            <Text style={[styles.sub, { color: colors.muted }, rtl && styles.rtlText]}>{subtitle}</Text>
+            <Text style={[styles.sub, { color: colors.muted }, rtl && styles.rtlText]} numberOfLines={1}>
+              {subtitle}
+            </Text>
           ) : null}
         </View>
       </View>
-      <View style={styles.actions}>
-        {showThemeToggle ? <ThemeToggle /> : null}
-        <Pressable
-          onPress={onToggleLanguage}
-          style={[styles.chip, { borderColor: colors.border, backgroundColor: colors.surface }]}
-        >
-          <Text style={[styles.chipText, { color: colors.text }]}>
-            {language === "ar" ? "FR" : "عربي"}
-          </Text>
-        </Pressable>
-        {onLogout ? (
-          <Pressable
-            onPress={onLogout}
-            style={[styles.chip, { borderColor: colors.border, backgroundColor: colors.surface }]}
-          >
-            <Text style={[styles.chipText, { color: colors.text }]}>{t("logout", language)}</Text>
-          </Pressable>
-        ) : null}
-      </View>
+      {hasActions ? (
+        <View style={styles.actions}>
+          {showThemeToggle ? <ThemeToggle /> : null}
+          {showLanguageToggle && onToggleLanguage ? (
+            <Pressable
+              onPress={onToggleLanguage}
+              style={[styles.chip, { borderColor: colors.border, backgroundColor: colors.surface }]}
+            >
+              <Text style={[styles.chipText, { color: colors.text }]}>
+                {language === "ar" ? "FR" : "عربي"}
+              </Text>
+            </Pressable>
+          ) : null}
+          {onLogout ? (
+            <Pressable
+              onPress={onLogout}
+              style={[styles.chip, { borderColor: colors.border, backgroundColor: colors.surface }]}
+            >
+              <Text style={[styles.chipText, { color: colors.text }]}>{t("logout", language)}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -69,9 +87,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.md,
   },
   headerRtl: { flexDirection: "row-reverse" },
   left: { flex: 1, flexDirection: "row", alignItems: "center", paddingRight: spacing.md },
@@ -85,9 +103,14 @@ const styles = StyleSheet.create({
   logoRtl: { marginLeft: spacing.sm },
   rtlText: { textAlign: "right", writingDirection: "rtl" },
   titles: { flex: 1 },
-  title: { ...typography.h1 },
+  title: { ...typography.h2 },
   sub: { ...typography.caption, marginTop: 2 },
-  actions: { flexDirection: "row", gap: spacing.sm, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" },
+  actions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    alignItems: "center",
+    flexShrink: 0,
+  },
   chip: {
     borderWidth: 1,
     borderRadius: radius.sm,

@@ -16,7 +16,7 @@ import type { ProgressItem } from "../../lib/api"
 import { colors, spacing, typography } from "../../theme"
 
 export function MyCoursesScreen() {
-  const { user, language, setLanguage, logout } = useAuth()
+  const { user, language } = useAuth()
   const { items, loading, offline } = useProgress()
   const navigation = useNavigation<BottomTabNavigationProp<LearnerTabParamList>>()
   const isTeacher = user?.role === "TEACHER"
@@ -37,8 +37,6 @@ export function MyCoursesScreen() {
         <AppHeader
           title={isTeacher ? t("library", language) : t("myCourses", language)}
           language={language}
-          onToggleLanguage={() => setLanguage(language === "ar" ? "fr" : "ar")}
-          onLogout={logout}
         />
         <OfflineBanner visible={offline} language={language} />
       </View>

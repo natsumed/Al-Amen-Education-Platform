@@ -1,7 +1,6 @@
 import React, { useState } from "react"
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
-import { AppHeader } from "../../components/AppHeader"
 import { PrimaryButton } from "../../components/PrimaryButton"
 import { Screen } from "../../components/Screen"
 import { TextField } from "../../components/TextField"
@@ -13,7 +12,7 @@ import { colors, radius, shadow, spacing, typography } from "../../theme"
 type Message = { id: string; role: "user" | "assistant"; text: string }
 
 export function HelpScreen() {
-  const { token, language, setLanguage, logout } = useAuth()
+  const { token, language } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [busy, setBusy] = useState(false)
@@ -41,14 +40,6 @@ export function HelpScreen() {
 
   return (
     <Screen style={styles.screen}>
-      <View style={styles.header}>
-        <AppHeader
-          title={t("help", language)}
-          language={language}
-          onToggleLanguage={() => setLanguage(language === "ar" ? "fr" : "ar")}
-          onLogout={logout}
-        />
-      </View>
       <FlatList
         data={messages}
         keyExtractor={(item) => item.id}

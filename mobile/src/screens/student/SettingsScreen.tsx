@@ -2,7 +2,6 @@ import React, { useState } from "react"
 import { StyleSheet, Switch, Text, View } from "react-native"
 import { Image } from "expo-image"
 import * as ImagePicker from "expo-image-picker"
-import { AppHeader } from "../../components/AppHeader"
 import { ErrorBanner } from "../../components/EmptyState"
 import { GradeChip } from "../../components/GradeChip"
 import { PrimaryButton } from "../../components/PrimaryButton"
@@ -16,7 +15,7 @@ import { radius, shadow, spacing, typography, useColors } from "../../theme"
 import { enableLearningNotifications } from "../../lib/notifications"
 
 export function SettingsScreen() {
-  const { user, token, language, setLanguage, logout, updateUser } = useAuth()
+  const { user, token, language, setLanguage, updateUser } = useAuth()
   const themeColors = useColors()
   const [fullName, setFullName] = useState(user?.fullName || "")
   const [phone, setPhone] = useState(user?.phone || "")
@@ -99,12 +98,6 @@ export function SettingsScreen() {
 
   return (
     <Screen scroll>
-      <AppHeader
-        title={t("settings", language)}
-        language={language}
-        onToggleLanguage={() => setLanguage(language === "ar" ? "fr" : "ar")}
-        onLogout={logout}
-      />
       {error ? <ErrorBanner message={error} /> : null}
       {message ? <Text style={[styles.success, { color: themeColors.success }]}>{message}</Text> : null}
 

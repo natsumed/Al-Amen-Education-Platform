@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react"
+import React, { useCallback, useMemo, useState } from "react"
 import { View, Text, StyleSheet, Pressable } from "react-native"
 import { Image } from "expo-image"
 import { Ionicons } from "@expo/vector-icons"
@@ -10,7 +10,7 @@ import { api, getApiBaseUrl, type Subscription } from "../../lib/api"
 import { t } from "../../lib/i18n"
 import { Screen } from "../../components/Screen"
 import { AppHeader } from "../../components/AppHeader"
-import { colors, radius, shadow, spacing, typography } from "../../theme"
+import { radius, shadow, spacing, typography, useColors, type ThemeColors } from "../../theme"
 import type { ProfileStackParamList } from "../../navigation/types"
 
 function resolveAvatarUrl(avatarUrl?: string | null): string | null {
@@ -25,6 +25,8 @@ function resolveAvatarUrl(avatarUrl?: string | null): string | null {
 
 export function ProfileScreen() {
   const { user, token, language, setLanguage, logout } = useAuth()
+  const colors = useColors()
+  const styles = useMemo(() => makeStyles(colors), [colors])
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>()
   const avatar = resolveAvatarUrl(user?.avatarUrl)
   const [subscription, setSubscription] = useState<Subscription | null>(null)
@@ -38,7 +40,11 @@ export function ProfileScreen() {
   )
 
   const roleLabel =
-    user?.role === "TEACHER" ? t("teacher", language) : user?.role === "PARENT" ? t("parent", language) : t("student", language)
+    user?.role === "TEACHER"
+      ? t("teacher", language)
+      : user?.role === "PARENT"
+        ? t("parent", language)
+        : t("student", language)
   const daysLeft = subscription
     ? Math.max(0, Math.ceil((new Date(subscription.endDate).getTime() - Date.now()) / 86_400_000))
     : 0
@@ -55,6 +61,7 @@ export function ProfileScreen() {
       <AppHeader
         title={t("profile", language)}
         language={language}
+        showLanguageToggle
         onToggleLanguage={() => setLanguage(language === "ar" ? "fr" : "ar")}
         onLogout={logout}
       />
@@ -108,13 +115,37 @@ export function ProfileScreen() {
         <Ionicons name="chevron-forward" size={20} color={colors.muted} />
       </Pressable>
 
-      <Row icon="settings-outline" label={t("settings", language)} onPress={() => navigation.navigate("Settings")} />
-      <Row icon="help-circle-outline" label={t("help", language)} onPress={() => navigation.navigate("Help")} />
+      <Row
+        colors={colors}
+        styles={styles}
+        icon="settings-outline"
+        label={t("settings", language)}
+        onPress={() => navigation.navigate("Settings")}
+      />
+      <Row
+        colors={colors}
+        styles={styles}
+        icon="help-circle-outline"
+        label={t("help", language)}
+        onPress={() => navigation.navigate("Help")}
+      />
     </Screen>
   )
 }
 
-function Row({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+function Row({
+  icon,
+  label,
+  onPress,
+  colors,
+  styles,
+}: {
+  icon: string
+  label: string
+  onPress: () => void
+  colors: ThemeColors
+  styles: ReturnType<typeof makeStyles>
+}) {
   return (
     <Pressable style={[styles.link, shadow.card]} onPress={onPress}>
       <View style={styles.linkLeft}>
@@ -128,72 +159,78 @@ function Row({ icon, label, onPress }: { icon: string; label: string; onPress: (
   )
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  avatar: { width: 60, height: 60, borderRadius: 30 },
-  avatarFallback: { backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  avatarLetter: { color: "#fff", fontFamily: "Cairo_800ExtraBold", fontSize: 24 },
-  name: { ...typography.h2, color: colors.text },
-  email: { ...typography.caption, color: colors.muted, marginTop: 2 },
-  rolePill: {
-    alignSelf: "flex-start",
-    marginTop: spacing.sm,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-  },
-  roleText: { ...typography.tiny, color: colors.primary },
-  idRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  idLabel: { ...typography.caption, color: colors.muted },
-  idValue: { ...typography.h2, color: colors.primary, letterSpacing: 2, marginTop: 2 },
-  copyBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-  },
-  copyText: { ...typography.tiny, color: colors.primary },
-  link: {
-    marginTop: spacing.md,
-    minHeight: 60,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  linkLeft: { flexDirection: "row", alignItems: "center", gap: spacing.md, flex: 1 },
-  linkIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  linkText: { ...typography.bodyBold, color: colors.text },
-  linkSub: { ...typography.caption, color: colors.muted, marginTop: 2 },
-})
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      padding: spacing.xl,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+    avatar: { width: 60, height: 60, borderRadius: 30 },
+    avatarFallback: {
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarLetter: { color: "#fff", fontFamily: "Cairo_800ExtraBold", fontSize: 24 },
+    name: { ...typography.h2, color: colors.text },
+    email: { ...typography.caption, color: colors.muted, marginTop: 2 },
+    rolePill: {
+      alignSelf: "flex-start",
+      marginTop: spacing.sm,
+      backgroundColor: colors.primarySoft,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 3,
+      borderRadius: radius.full,
+    },
+    roleText: { ...typography.tiny, color: colors.primary },
+    idRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: spacing.lg,
+      paddingTop: spacing.lg,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    idLabel: { ...typography.caption, color: colors.muted },
+    idValue: { ...typography.h2, color: colors.primary, letterSpacing: 2, marginTop: 2 },
+    copyBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+      backgroundColor: colors.primarySoft,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.full,
+    },
+    copyText: { ...typography.tiny, color: colors.primary },
+    link: {
+      marginTop: spacing.md,
+      minHeight: 60,
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    linkLeft: { flexDirection: "row", alignItems: "center", gap: spacing.md, flex: 1 },
+    linkIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.md,
+      backgroundColor: colors.primarySoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    linkText: { ...typography.bodyBold, color: colors.text },
+    linkSub: { ...typography.caption, color: colors.muted, marginTop: 2 },
+  })
+}
