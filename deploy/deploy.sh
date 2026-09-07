@@ -44,7 +44,7 @@ case "$TARGET" in
     previous_tag="$(read_env_value PROD_IMAGE_TAG)"
     export PROD_IMAGE_TAG="$IMAGE_TAG_INPUT"
     export STAGING_IMAGE_TAG="$(read_env_value STAGING_IMAGE_TAG)"
-    services=(prod-db prod-valkey prod-app caddy)
+    services=(prod-db prod-valkey prod-app)
     app_service=prod-app
     tag_key=PROD_IMAGE_TAG
     ;;
@@ -89,6 +89,13 @@ for service in "$app_service"; do
     sleep 3
   done
 done
+
+if [[ "$TARGET" == "production" ]]; then
+  # Recreate the public proxy only after the new application is healthy, so a
+  # failed application rollout cannot take the currently serving proxy down.
+  "${COMPOSE[@]}" up -d caddy
+  "${COMPOSE[@]}" ps caddy
+fi
 
 persist_env_value "$tag_key" "$IMAGE_TAG_INPUT"
 echo "Deployed $TARGET image $IMAGE_TAG_INPUT"
