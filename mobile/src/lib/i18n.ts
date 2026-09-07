@@ -48,13 +48,13 @@ const dict = {
   },
   lockedShort: { fr: "Verrouillé", ar: "مقفل" },
   noMedia: {
-    fr: "Aucun média lié pour l'instant (Drive bientôt)",
-    ar: "لا يوجد وسائط بعد (Drive قريباً)",
+    fr: "Le média protégé n'est pas encore disponible",
+    ar: "الوسائط المحمية غير متاحة بعد",
   },
   accountNumber: { fr: "N° compte", ar: "رقم الحساب" },
   downloadAppHint: {
-    fr: "Application Amenallah — téléchargez l'APK depuis amenallah.tn/download",
-    ar: "تطبيق أمان الله — حمّل ملف APK من الموقع /download",
+    fr: "Application Amenallah — téléchargez l'APK signé depuis amanallahedition.com/download",
+    ar: "تطبيق أمان الله — حمّل ملف APK الموقّع من amanallahedition.com/download",
   },
   parentNoCourses: {
     fr: "Les cours sont sur le compte élève. Ici : suivi et paiement via le web.",

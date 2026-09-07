@@ -21,7 +21,7 @@ export default function TeacherDashboard() {
             </h1>
             <p className="text-muted-foreground mt-1 max-w-xl">
               Accédez aux vidéos, PDF et animations pour préparer vos cours.
-              Un abonnement enseignant débloque le téléchargement et les ressources premium.
+              Un abonnement enseignant débloque la consultation protégée des ressources premium.
             </p>
           </div>
         </div>

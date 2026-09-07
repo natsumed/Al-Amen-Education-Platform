@@ -17,7 +17,7 @@ import {
 
 const FEATURES = [
   { icon: Video, titleFr: "Cours vidéo", titleAr: "دروس فيديو", descFr: "Des centaines de cours vidéo pour toutes les matières du primaire.", descAr: "مئات الدروس المصورة لجميع مواد التعليم الابتدائي.", color: "from-blue-500 to-blue-600", bg: "bg-blue-50" },
-  { icon: BookOpen, titleFr: "Livres & Séries", titleAr: "كتب وسلاسل", descFr: "Téléchargez les livres et séries d'exercices au format PDF.", descAr: "حمّل الكتب وسلاسل التمارين بصيغة PDF.", color: "from-emerald-500 to-emerald-600", bg: "bg-emerald-50" },
+  { icon: BookOpen, titleFr: "Livres & Séries", titleAr: "كتب وسلاسل", descFr: "Consultez les livres et séries dans le lecteur protégé de la plateforme.", descAr: "اطّلع على الكتب وسلاسل التمارين داخل قارئ المنصة المحمي.", color: "from-emerald-500 to-emerald-600", bg: "bg-emerald-50" },
   { icon: MonitorPlay, titleFr: "Formations", titleAr: "تكوينات", descFr: "Des formations complètes pour maîtriser chaque matière du programme officiel.", descAr: "تكوينات شاملة لإتقان كل مادة من البرنامج الرسمي.", color: "from-violet-500 to-violet-600", bg: "bg-violet-50" },
   { icon: Zap, titleFr: "Animations", titleAr: "رسوم متحركة", descFr: "Des animations éducatives captivantes pour les enseignants.", descAr: "رسوم متحركة تعليمية شيّقة للمعلمين.", color: "from-amber-500 to-amber-600", bg: "bg-amber-50" },
   { icon: Users, titleFr: "Suivi parental", titleAr: "متابعة الوالدين", descFr: "Les parents suivent la progression de leurs enfants.", descAr: "يتابع الوالدان تقدم أبنائهم.", color: "from-rose-500 to-rose-600", bg: "bg-rose-50" },

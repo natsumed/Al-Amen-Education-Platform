@@ -16,7 +16,7 @@ import type { RootStackParamList } from "./types"
 const Stack = createNativeStackNavigator<RootStackParamList>()
 
 const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: [Linking.createURL("/"), "alamen://", "https://amenallah.tn"],
+  prefixes: [Linking.createURL("/"), "alamen://", "https://amanallahedition.com"],
   config: {
     screens: {
       LearnerTabs: {

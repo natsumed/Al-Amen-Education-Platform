@@ -419,7 +419,7 @@ export default function ContentDetailPage() {
                   <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                     {isAr
                       ? "اشترك للوصول إلى جميع المحتويات المميزة والتحميل غير المحدود"
-                      : "Abonnez-vous pour accéder à tous les contenus premium et au téléchargement illimité"}
+                      : "Abonnez-vous pour consulter tous les contenus premium dans les lecteurs protégés"}
                   </p>
                   <Link href="/pricing">
                     <Button size="lg" className="shadow-lg shadow-primary/25">
