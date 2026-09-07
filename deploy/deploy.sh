@@ -69,7 +69,10 @@ rollback() {
   "${COMPOSE[@]}" up -d "$app_service"
 }
 
-"${COMPOSE[@]}" pull "$app_service"
+image_name="$(read_env_value IMAGE_NAME)"
+if ! docker image inspect "$image_name:$IMAGE_TAG_INPUT" >/dev/null 2>&1; then
+  "${COMPOSE[@]}" pull "$app_service"
+fi
 "${COMPOSE[@]}" run --rm "$app_service" npx prisma migrate deploy
 "${COMPOSE[@]}" up -d "${services[@]}"
 "${COMPOSE[@]}" ps "$app_service"

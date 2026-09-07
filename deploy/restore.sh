@@ -21,8 +21,10 @@ restart_app() { "${COMPOSE[@]}" up -d "$app_service" >/dev/null 2>&1 || true; }
 trap restart_app EXIT
 
 "${COMPOSE[@]}" stop "$app_service"
+"${COMPOSE[@]}" exec -T "$db_service" psql --username=platform --dbname=platform \
+  --set=ON_ERROR_STOP=1 --command='DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
 "${COMPOSE[@]}" exec -T "$db_service" pg_restore \
-  --username=platform --dbname=platform --clean --if-exists --no-owner < "$DUMP_PATH"
+  --username=platform --dbname=platform --exit-on-error --no-owner < "$DUMP_PATH"
 "${COMPOSE[@]}" run --rm "$app_service" npx prisma migrate deploy
 "${COMPOSE[@]}" up -d "$app_service"
 "${COMPOSE[@]}" exec -T "$app_service" node -e \
