@@ -1,59 +1,64 @@
-import { createHmac, timingSafeEqual } from "crypto"
+import { SignJWT, jwtVerify } from "jose"
 import type { Role } from "@/types"
 
-const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
+export const MOBILE_ACCESS_TTL_SECONDS = 15 * 60
+export const MOBILE_REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60
 
 export type MobileTokenPayload = {
   sub: string
   email: string
   role: Role
   fullName: string
+  deviceSessionId: string
+  sessionVersion: number
   exp: number
   iat: number
+  jti: string
 }
 
-function getSecret(): string {
+function signingKey(): Uint8Array {
   const secret = process.env.AUTH_SECRET
   if (!secret) throw new Error("AUTH_SECRET is not configured")
-  return secret
+  return new TextEncoder().encode(secret)
 }
 
-function b64url(input: Buffer | string): string {
-  const buf = typeof input === "string" ? Buffer.from(input, "utf8") : input
-  return buf.toString("base64url")
+export async function signMobileToken(
+  payload: Omit<MobileTokenPayload, "exp" | "iat" | "jti">
+): Promise<string> {
+  return new SignJWT({
+    email: payload.email,
+    role: payload.role,
+    fullName: payload.fullName,
+    deviceSessionId: payload.deviceSessionId,
+    sessionVersion: payload.sessionVersion,
+  })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setSubject(payload.sub)
+    .setIssuedAt()
+    .setExpirationTime(`${MOBILE_ACCESS_TTL_SECONDS}s`)
+    .setJti(crypto.randomUUID())
+    .sign(signingKey())
 }
 
-function fromB64url(input: string): Buffer {
-  return Buffer.from(input, "base64url")
-}
-
-export function signMobileToken(payload: Omit<MobileTokenPayload, "exp" | "iat">): string {
-  const iat = Math.floor(Date.now() / 1000)
-  const body: MobileTokenPayload = {
-    ...payload,
-    iat,
-    exp: iat + TOKEN_TTL_SECONDS,
-  }
-  const header = b64url(JSON.stringify({ alg: "HS256", typ: "MAT" }))
-  const payloadPart = b64url(JSON.stringify(body))
-  const data = `${header}.${payloadPart}`
-  const sig = createHmac("sha256", getSecret()).update(data).digest()
-  return `${data}.${b64url(sig)}`
-}
-
-export function verifyMobileToken(token: string): MobileTokenPayload | null {
+export async function verifyMobileToken(token: string): Promise<MobileTokenPayload | null> {
   try {
-    const parts = token.split(".")
-    if (parts.length !== 3) return null
-    const [header, payloadPart, sigPart] = parts
-    const data = `${header}.${payloadPart}`
-    const expected = createHmac("sha256", getSecret()).update(data).digest()
-    const actual = fromB64url(sigPart)
-    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null
+    const { payload } = await jwtVerify(token, signingKey(), {
+      algorithms: ["HS256"],
+      typ: "JWT",
+    })
+    if (
+      !payload.sub ||
+      typeof payload.email !== "string" ||
+      typeof payload.role !== "string" ||
+      typeof payload.fullName !== "string" ||
+      typeof payload.deviceSessionId !== "string" ||
+      typeof payload.sessionVersion !== "number" ||
+      typeof payload.exp !== "number" ||
+      typeof payload.iat !== "number" ||
+      typeof payload.jti !== "string"
+    ) return null
 
-    const payload = JSON.parse(fromB64url(payloadPart).toString("utf8")) as MobileTokenPayload
-    if (!payload.sub || !payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null
-    return payload
+    return payload as unknown as MobileTokenPayload
   } catch {
     return null
   }
@@ -61,7 +66,7 @@ export function verifyMobileToken(token: string): MobileTokenPayload | null {
 
 export function getBearerToken(authorization: string | null): string | null {
   if (!authorization) return null
-  const [scheme, token] = authorization.split(" ")
-  if (scheme?.toLowerCase() !== "bearer" || !token) return null
+  const [scheme, token, extra] = authorization.trim().split(/\s+/)
+  if (scheme?.toLowerCase() !== "bearer" || !token || extra) return null
   return token
 }

@@ -4,11 +4,12 @@ import { prisma } from "@/lib/prisma"
 import { forgotPasswordSchema } from "@/lib/validations"
 import { sendPasswordResetEmail } from "@/lib/email"
 import { forgotPasswordLimiter } from "@/lib/rate-limit"
+import { hashOpaqueToken } from "@/lib/security-crypto"
 
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown"
-    const limit = forgotPasswordLimiter.check(ip)
+    const limit = await forgotPasswordLimiter.check(ip)
     if (!limit.allowed) {
       return NextResponse.json({ error: "Trop de tentatives. Réessayez plus tard." }, { status: 429 })
     }
@@ -21,13 +22,15 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ message: "Si cet email existe, un lien a été envoyé" })
 
     const token = crypto.randomBytes(32).toString("hex")
-    const expiry = new Date(Date.now() + 3600000) // 1 hour
+    const expiry = new Date(Date.now() + 20 * 60 * 1000)
 
-    await prisma.user.update({ where: { id: user.id }, data: { resetToken: token, resetTokenExp: expiry } })
+    await prisma.user.update({ where: { id: user.id }, data: { resetToken: hashOpaqueToken(token), resetTokenExp: expiry } })
     await sendPasswordResetEmail(user.email, user.fullName, token)
 
     // Log reset link for local testing (Resend not configured in dev)
-    console.log(`\n[DEV] Password reset link: http://localhost:3000/reset-password?token=${token}\n`)
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[DEV] Password reset token generated for ${user.id}`)
+    }
 
     return NextResponse.json({ message: "Si cet email existe, un lien a été envoyé" })
   } catch (error) {

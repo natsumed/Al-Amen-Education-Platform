@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
+import { hash as hashArgon2, verify as verifyArgon2 } from "@node-rs/argon2"
 import { prisma } from "@/lib/prisma"
 import { getRequestUser } from "@/lib/request-auth"
 import { changePasswordSchema } from "@/lib/validations"
@@ -29,15 +30,24 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const ok = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash)
+    const ok = user.passwordHash.startsWith("$argon2")
+      ? await verifyArgon2(user.passwordHash, parsed.data.currentPassword)
+      : await bcrypt.compare(parsed.data.currentPassword, user.passwordHash)
     if (!ok) {
       return NextResponse.json({ error: "Mot de passe actuel incorrect" }, { status: 400 })
     }
 
-    const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12)
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash },
+    const passwordHash = await hashArgon2(parsed.data.newPassword)
+    const now = new Date()
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: { passwordHash, passwordUpdatedAt: now, sessionVersion: { increment: 1 } },
+      })
+      const sessions = await tx.deviceSession.findMany({ where: { userId: user.id }, select: { id: true } })
+      const ids = sessions.map((session) => session.id)
+      await tx.deviceSession.updateMany({ where: { id: { in: ids } }, data: { revokedAt: now } })
+      await tx.refreshToken.updateMany({ where: { deviceSessionId: { in: ids } }, data: { revokedAt: now } })
     })
 
     return NextResponse.json({ message: "Mot de passe mis à jour" })

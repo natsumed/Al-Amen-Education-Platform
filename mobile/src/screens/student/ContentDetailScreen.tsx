@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { View, Text, StyleSheet, ActivityIndicator, Linking, Pressable, Share, ScrollView } from "react-native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
-import * as WebBrowser from "expo-web-browser"
-import { WebView } from "react-native-webview"
+import * as ScreenCapture from "expo-screen-capture"
+import { VdoPlayerView } from "vdocipher-rn-bridge"
 import { Ionicons } from "@expo/vector-icons"
 import { api, getApiBaseUrl, type ContentItem } from "../../lib/api"
 import { submitProgress } from "../../lib/offline-queue"
@@ -19,24 +19,15 @@ import type { CatalogueStackParamList } from "../../navigation/types"
 
 type Props = NativeStackScreenProps<CatalogueStackParamList, "ContentDetail">
 
-/** YouTube/Drive links to WebView-embeddable form (Drive already normalized server-side). */
-function toEmbeddable(url: string): string {
-  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]+)/)
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}?playsinline=1&rel=0&modestbranding=1`
-  return url
-}
-
 export function ContentDetailScreen({ route, navigation }: Props) {
+  ScreenCapture.usePreventScreenCapture("protected-content")
   const { id } = route.params
   const { token, language } = useAuth()
   const [content, setContent] = useState<(ContentItem & { access?: ContentItem["access"] }) | null>(null)
-  const [media, setMedia] = useState<{
-    youtubeUrl: string | null
-    pdfUrl: string | null
-    gifUrl: string | null
-  } | null>(null)
+  const [playback, setPlayback] = useState<{ otp: string; playbackInfo: string; sessionCode: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [playbackError, setPlaybackError] = useState("")
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState("")
   const [reviewSent, setReviewSent] = useState(false)
@@ -58,6 +49,7 @@ export function ContentDetailScreen({ route, navigation }: Props) {
   const load = useCallback(async () => {
     try {
       setError("")
+      setPlaybackError("")
       const data = await api.getContent(id, token)
       setContent(data)
       navigation.setOptions({ title: contentTitle(data, language) })
@@ -66,11 +58,11 @@ export function ContentDetailScreen({ route, navigation }: Props) {
         .then((result) => setRelated((result.items || []).filter((item) => item.id !== id).slice(0, 6)))
       if (data.access?.canAccess && token) {
         try {
-          const m = await api.getMedia(id, token)
-          setMedia(m.media)
+          const authorized = await api.getPlayback(id, token)
+          setPlayback(authorized)
           sendProgress(10)
-        } catch {
-          /* locked media */
+        } catch (authorizationError) {
+          setPlaybackError(authorizationError instanceof Error ? authorizationError.message : t("noMedia", language))
         }
       }
     } catch (e: unknown) {
@@ -86,18 +78,17 @@ export function ContentDetailScreen({ route, navigation }: Props) {
 
   // Milestone: after ~45s of active viewing, mark meaningful progress.
   useEffect(() => {
-    if (!media) return
+    if (!playback) return
     const timer = setTimeout(() => sendProgress(50), 45_000)
     return () => clearTimeout(timer)
-  }, [media, sendProgress])
+  }, [playback, sendProgress])
 
-  const openUrl = async (url: string) => {
-    try {
-      await WebBrowser.openBrowserAsync(url)
-    } catch {
-      await Linking.openURL(url)
+  useEffect(() => {
+    void ScreenCapture.enableAppSwitcherProtectionAsync(1)
+    return () => {
+      void ScreenCapture.disableAppSwitcherProtectionAsync()
     }
-  }
+  }, [])
 
   const markComplete = () => sendProgress(100)
 
@@ -146,8 +137,6 @@ export function ContentDetailScreen({ route, navigation }: Props) {
   const title = contentTitle(content, language)
   const description = contentDescription(content, language)
   const canAccess = Boolean(content.access?.canAccess)
-  const rawUrl = media?.youtubeUrl || media?.pdfUrl || media?.gifUrl
-  const playerUrl = rawUrl ? toEmbeddable(rawUrl) : null
 
   return (
     <Screen scroll>
@@ -181,18 +170,18 @@ export function ContentDetailScreen({ route, navigation }: Props) {
         </View>
       ) : null}
 
-      {canAccess && playerUrl ? (
+      {canAccess && playback ? (
         <>
           <View style={[styles.player, shadow.card]}>
-            <WebView
-              source={{ uri: playerUrl }}
-              javaScriptEnabled
-              domStorageEnabled
-              allowsFullscreenVideo
-              mediaPlaybackRequiresUserAction
-              startInLoadingState
-              renderLoading={() => <ActivityIndicator color={colors.primary} style={styles.webLoader} />}
-              onError={() => openUrl(playerUrl)}
+            <VdoPlayerView
+              style={styles.nativePlayer}
+              embedInfo={{ otp: playback.otp, playbackInfo: playback.playbackInfo }}
+              showNativeControls
+              autoPlay={false}
+              onProgress={({ currentTime }) => {
+                if (currentTime >= 45) sendProgress(50)
+              }}
+              onMediaEnded={() => sendProgress(100)}
             />
           </View>
           <View style={styles.progressRow}>
@@ -202,16 +191,12 @@ export function ContentDetailScreen({ route, navigation }: Props) {
             <Text style={styles.progressLabel}>{progressPct}%</Text>
           </View>
           <PrimaryButton label={t("markComplete", language)} onPress={markComplete} style={styles.btn} />
-          <PrimaryButton
-            label={t("openInBrowser", language)}
-            variant="outline"
-            onPress={() => openUrl(playerUrl)}
-            style={styles.btn}
-          />
         </>
       ) : null}
 
-      {canAccess && !playerUrl ? <Text style={styles.hint}>{t("noMedia", language)}</Text> : null}
+      {canAccess && !playback ? (
+        <Text style={styles.hint}>{playbackError || t("noMedia", language)}</Text>
+      ) : null}
 
       {canAccess && token ? (
         <View style={styles.review}>
@@ -292,6 +277,7 @@ const styles = StyleSheet.create({
   lockText: { color: colors.warning, ...typography.bodyBold, textAlign: "center" },
   subscribe: { marginTop: spacing.md, alignSelf: "stretch" },
   player: { height: 240, borderRadius: radius.lg, overflow: "hidden", backgroundColor: "#000", marginBottom: spacing.md },
+  nativePlayer: { flex: 1, width: "100%", backgroundColor: "#000" },
   webLoader: { flex: 1 },
   progressRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.md },
   progressTrack: { flex: 1, height: 8, borderRadius: radius.full, backgroundColor: colors.surfaceAlt, overflow: "hidden" },

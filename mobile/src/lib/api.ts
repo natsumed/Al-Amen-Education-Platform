@@ -2,7 +2,7 @@
  * Resolve API base URL for standalone APK / emulator / Metro debug.
  *
  * Priority:
- * 0. Runtime override (AsyncStorage / setApiBaseUrlOverride) — for debugging
+ * 0. Runtime override in development only — never permitted in a release build
  * 1. EXPO_PUBLIC_API_URL (required for release / EAS preview & production builds)
  * 2. Same LAN host as Metro (dev only)
  * 3. Android emulator → http://10.0.2.2:3000
@@ -12,9 +12,18 @@ import Constants from "expo-constants"
 import { Platform } from "react-native"
 
 let runtimeOverride: string | null = null
+let refreshAccessToken: (() => Promise<string | null>) | null = null
+
+export function setAuthRefreshHandler(handler: (() => Promise<string | null>) | null) {
+  refreshAccessToken = handler
+}
 
 /** Call after loading AsyncStorage so a wrong baked URL can be fixed without a rebuild. */
 export function setApiBaseUrlOverride(url: string | null) {
+  if (!__DEV__) {
+    runtimeOverride = null
+    return
+  }
   runtimeOverride = url ? url.replace(/\/$/, "") : null
 }
 
@@ -23,7 +32,7 @@ export function getApiBaseUrlOverride(): string | null {
 }
 
 export function getApiBaseUrl(): string {
-  if (runtimeOverride) return runtimeOverride
+  if (__DEV__ && runtimeOverride) return runtimeOverride
 
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "")
   if (fromEnv && !fromEnv.includes("REPLACE_WITH_YOUR_API_HOST")) {
@@ -112,9 +121,9 @@ export type ProgressItem = {
 
 async function request<T>(
   path: string,
-  options: RequestInit & { token?: string | null } = {}
+  options: RequestInit & { token?: string | null; _retried?: boolean } = {}
 ): Promise<T> {
-  const { token, headers, ...rest } = options
+  const { token, headers, _retried, ...rest } = options
   let base: string
   try {
     base = getApiBaseUrl()
@@ -150,6 +159,10 @@ async function request<T>(
   }
 
   const data = await res.json().catch(() => ({}))
+  if (res.status === 401 && token && !_retried && refreshAccessToken) {
+    const nextToken = await refreshAccessToken()
+    if (nextToken) return request<T>(path, { ...options, token: nextToken, _retried: true })
+  }
   if (!res.ok) {
     throw new Error((data as { error?: string }).error || `HTTP ${res.status}`)
   }
@@ -157,11 +170,20 @@ async function request<T>(
 }
 
 export const api = {
-  login: (email: string, password: string) =>
-    request<{ token: string; user: MobileUser }>("/api/mobile/auth/login", {
+  login: (email: string, password: string, device: { deviceId: string; platform: string; deviceName?: string }, totpCode?: string) =>
+    request<{ accessToken: string; token: string; refreshToken: string; expiresIn: number; user: MobileUser }>("/api/mobile/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, totpCode, ...device }),
     }),
+
+  refresh: (refreshToken: string) =>
+    request<{ accessToken: string; token: string; refreshToken: string; expiresIn: number }>(
+      "/api/mobile/auth/refresh",
+      { method: "POST", body: JSON.stringify({ refreshToken }), _retried: true }
+    ),
+
+  logout: (token: string) =>
+    request<{ ok: boolean }>("/api/mobile/auth/logout", { method: "POST", token, _retried: true }),
 
   me: (token: string) =>
     request<{ user: MobileUser & { subscriptions?: Subscription[] } }>("/api/mobile/auth/me", {
@@ -215,6 +237,12 @@ export const api = {
       }
       canDownload: boolean
     }>(`/api/content/${id}/media`, { token }),
+
+  getPlayback: (id: string, token: string) =>
+    request<{ otp: string; playbackInfo: string; videoId: string; sessionCode: string; expiresIn: number }>(
+      `/api/content/${id}/playback`,
+      { method: "POST", token, body: JSON.stringify({ client: "mobile" }) }
+    ),
 
   parentChildren: (token: string) =>
     request<{

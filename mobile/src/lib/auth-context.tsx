@@ -1,10 +1,16 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { api, setApiBaseUrlOverride, type MobileUser } from "./api"
+import * as SecureStore from "expo-secure-store"
+import * as Device from "expo-device"
+import { Platform } from "react-native"
+import { api, setApiBaseUrlOverride, setAuthRefreshHandler, type MobileUser } from "./api"
 import { flushProgressQueue } from "./offline-queue"
 import { registerPushToken, unregisterPushToken } from "./notifications"
 
-const TOKEN_KEY = "alamen_mobile_token"
+const LEGACY_TOKEN_KEY = "alamen_mobile_token"
+const ACCESS_TOKEN_KEY = "alamen_access_token"
+const REFRESH_TOKEN_KEY = "alamen_refresh_token"
+const DEVICE_ID_KEY = "alamen_device_id"
 const LANGUAGE_KEY = "alamen_mobile_language"
 const API_OVERRIDE_KEY = "alamen_api_base_override"
 
@@ -14,7 +20,7 @@ type AuthContextValue = {
   loading: boolean
   language: "fr" | "ar"
   setLanguage: (lang: "fr" | "ar") => void
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, totpCode?: string) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
   updateUser: (user: MobileUser) => void
@@ -28,19 +34,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [language, setLanguage] = useState<"fr" | "ar">("fr")
 
+  const clearCredentials = useCallback(async () => {
+    await Promise.all([
+      SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
+      SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
+      AsyncStorage.removeItem(LEGACY_TOKEN_KEY),
+    ])
+    setToken(null)
+    setUser(null)
+  }, [])
+
+  const rotateAccessToken = useCallback(async (): Promise<string | null> => {
+    const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY)
+    if (!refreshToken) return null
+    try {
+      const rotated = await api.refresh(refreshToken)
+      await Promise.all([
+        SecureStore.setItemAsync(ACCESS_TOKEN_KEY, rotated.accessToken),
+        SecureStore.setItemAsync(REFRESH_TOKEN_KEY, rotated.refreshToken),
+      ])
+      setToken(rotated.accessToken)
+      return rotated.accessToken
+    } catch {
+      await clearCredentials()
+      return null
+    }
+  }, [clearCredentials])
+
+  useEffect(() => {
+    setAuthRefreshHandler(rotateAccessToken)
+    return () => setAuthRefreshHandler(null)
+  }, [rotateAccessToken])
+
   useEffect(() => {
     ;(async () => {
       try {
         const [stored, savedLanguage, apiOverride] = await Promise.all([
-          AsyncStorage.getItem(TOKEN_KEY),
+          SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
           AsyncStorage.getItem(LANGUAGE_KEY),
           AsyncStorage.getItem(API_OVERRIDE_KEY),
         ])
         if (apiOverride) setApiBaseUrlOverride(apiOverride)
         if (savedLanguage === "fr" || savedLanguage === "ar") setLanguage(savedLanguage)
-        if (stored) {
-          const { user: me } = await api.me(stored)
-          setToken(stored)
+        await AsyncStorage.removeItem(LEGACY_TOKEN_KEY)
+        const activeToken = stored || await rotateAccessToken()
+        if (activeToken) {
+          const { user: me } = await api.me(activeToken)
+          setToken(activeToken)
           setUser({
             id: me.id,
             email: me.email,
@@ -52,36 +92,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             preferredLanguage: me.preferredLanguage,
             emailNotifications: me.emailNotifications,
           })
-          void flushProgressQueue(stored).catch(() => {})
-          void registerPushToken(stored).catch(() => {})
+          void flushProgressQueue(activeToken).catch(() => {})
+          void registerPushToken(activeToken).catch(() => {})
         }
       } catch {
-        await AsyncStorage.removeItem(TOKEN_KEY)
+        await clearCredentials()
       } finally {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [clearCredentials, rotateAccessToken])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.login(email.trim().toLowerCase(), password)
-    if (!res?.token || !res?.user) {
+  const login = useCallback(async (email: string, password: string, totpCode?: string) => {
+    let deviceId = await SecureStore.getItemAsync(DEVICE_ID_KEY)
+    if (!deviceId) {
+      deviceId = `amen-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`
+      await SecureStore.setItemAsync(DEVICE_ID_KEY, deviceId)
+    }
+    const res = await api.login(email.trim().toLowerCase(), password, {
+      deviceId,
+      platform: Platform.OS,
+      deviceName: Device.modelName || undefined,
+    }, totpCode)
+    if (!res?.accessToken || !res?.refreshToken || !res?.user) {
       throw new Error("Réponse de connexion invalide")
     }
-    await AsyncStorage.setItem(TOKEN_KEY, res.token)
-    setToken(res.token)
+    await Promise.all([
+      SecureStore.setItemAsync(ACCESS_TOKEN_KEY, res.accessToken),
+      SecureStore.setItemAsync(REFRESH_TOKEN_KEY, res.refreshToken),
+    ])
+    setToken(res.accessToken)
     setUser(res.user)
     // Post-login side effects must never fail the login itself.
-    void flushProgressQueue(res.token).catch(() => {})
-    void registerPushToken(res.token).catch(() => {})
+    void flushProgressQueue(res.accessToken).catch(() => {})
+    void registerPushToken(res.accessToken).catch(() => {})
   }, [])
 
   const logout = useCallback(async () => {
-    if (token) void unregisterPushToken(token)
-    await AsyncStorage.removeItem(TOKEN_KEY)
-    setToken(null)
-    setUser(null)
-  }, [token])
+    if (token) {
+      await Promise.allSettled([unregisterPushToken(token), api.logout(token)])
+    }
+    await clearCredentials()
+  }, [token, clearCredentials])
 
   // Flush any queued progress writes as soon as connectivity returns.
   useEffect(() => {

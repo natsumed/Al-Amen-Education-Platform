@@ -70,6 +70,14 @@ export async function getSignedUrl(path: string, expiresInSeconds = 300): Promis
   return data.signedUrl
 }
 
+export async function downloadPrivateBuffer(path: string): Promise<Buffer | null> {
+  const supabaseAdmin = getAdminClient()
+  if (!supabaseAdmin || !path || /^https?:\/\//i.test(path)) return null
+  const { data, error } = await supabaseAdmin.storage.from(BUCKET).download(path)
+  if (error || !data) return null
+  return Buffer.from(await data.arrayBuffer())
+}
+
 export async function deleteFile(path: string): Promise<boolean> {
   const supabaseAdmin = getAdminClient()
   if (!supabaseAdmin) return false

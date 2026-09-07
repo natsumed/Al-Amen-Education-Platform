@@ -30,22 +30,15 @@ export function stripMediaForList<T extends MediaFields>(content: T): T {
 }
 
 /**
- * Detail responses: keep metadata; redact media unless the user can access.
- * Thumbnail stays for marketing/preview.
+ * Detail responses never contain source media URLs. Authorized clients must
+ * use the dedicated playback/document endpoint, or the temporary legacy media
+ * endpoint while migration is explicitly enabled.
  */
 export function sanitizeContentForAccess<T extends MediaFields>(
   content: T,
-  canAccess: boolean
+  _canAccess: boolean
 ): T {
-  if (canAccess) return content
-
-  return {
-    ...content,
-    youtubeUrl: null,
-    pdfUrl: null,
-    gifUrl: null,
-    fileUrls: "[]",
-  }
+  return stripMediaForList(content)
 }
 
 export function parseFileUrls(raw: unknown): string[] {

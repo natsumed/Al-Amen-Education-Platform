@@ -21,13 +21,20 @@
         "NSPhotoLibraryUsageDescription": "Amenallah utilise votre photo uniquement pour votre avatar.",
         "NSCameraUsageDescription": "Amenallah utilise la caméra uniquement pour votre avatar.",
         "NSPhotoLibraryAddUsageDescription": "Amenallah n'enregistre pas de photos dans votre bibliothèque.",
-        "CFBundleAllowMixedLocalizations": true
+        "CFBundleAllowMixedLocalizations": true,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": false
+        }
       }
     },
     "android": {
       "package": "tn.amenallah.education",
       "versionCode": 3,
-      "usesCleartextTraffic": true,
+      "usesCleartextTraffic": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#2040e0",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -48,6 +55,8 @@
         }
       ],
       "expo-notifications",
+      "expo-secure-store",
+      "./plugins/with-secure-content.js",
       [
         "expo-splash-screen",
         {

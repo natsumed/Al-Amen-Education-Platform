@@ -7,11 +7,12 @@ export interface PaymentSession {
 
 export interface PaymentProviderInterface {
   createPayment(params: {
-    amount: number
+    amountMillis: number
     currency: string
     description: string
     returnUrl: string
     paymentId: string
+    merchantOrderRef: string
   }): Promise<PaymentSession>
   verifyWebhook(payload: unknown, signature: string): boolean
 }

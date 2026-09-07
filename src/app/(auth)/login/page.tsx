@@ -29,6 +29,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [totpCode, setTotpCode] = useState("")
   const { register, handleSubmit, formState: { errors } } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) })
 
   const fetchUserRoleAndRedirect = async () => {
@@ -57,7 +58,7 @@ export default function LoginPage() {
         return
       }
 
-      const result = await signIn("credentials", { ...data, redirect: false })
+      const result = await signIn("credentials", { ...data, totpCode, redirect: false })
       if (result?.error) {
         const remaining = Math.max(0, (limitData.remaining ?? 5) - 1)
         if (remaining > 0) {
@@ -110,6 +111,10 @@ export default function LoginPage() {
               <Input id="email" type="email" placeholder={isAr ? "بريدك@الإلكتروني.com" : "votre@email.com"} className="pl-10" {...register("email")} />
             </div>
             {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="totpCode">{isAr ? "رمز الأمان (إن كان مفعلاً)" : "Code de sécurité (si activé)"}</Label>
+            <Input id="totpCode" inputMode="numeric" autoComplete="one-time-code" value={totpCode} onChange={(event) => setTotpCode(event.target.value)} maxLength={12} placeholder="123456" />
           </div>
           <div className="space-y-2">
             <div className="flex justify-between items-center">

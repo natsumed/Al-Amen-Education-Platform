@@ -11,5 +11,14 @@ services:
     volumes:
       - local_postgres_data:/var/lib/postgresql/data
 
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - local_valkey_data:/data
+
 volumes:
   local_postgres_data:
+  local_valkey_data:

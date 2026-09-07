@@ -1,71 +1,65 @@
-// File-based rate limiter — persists across Next.js dev mode hot reloads
-import fs from "fs"
-import path from "path"
+import { getRedisClient } from "./redis"
 
-const STORE_PATH = path.join(process.cwd(), ".opencode", "rate-limits.json")
+type RateLimitEntry = { count: number; resetAt: number }
+const memoryFallback = new Map<string, RateLimitEntry>()
 
-function readStore(): Record<string, { count: number; resetAt: number }> {
-  try {
-    if (!fs.existsSync(STORE_PATH)) return {}
-    const raw = fs.readFileSync(STORE_PATH, "utf-8")
-    return JSON.parse(raw)
-  } catch {
-    return {}
-  }
+export type RateLimitResult = {
+  allowed: boolean
+  remaining: number
+  resetAt: number
 }
 
-function writeStore(store: Record<string, { count: number; resetAt: number }>) {
-  try {
-    const dir = path.dirname(STORE_PATH)
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2))
-  } catch {
-    // silently fail if can't write
-  }
-}
+const CHECK_SCRIPT = `
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+local ttl = redis.call('PTTL', KEYS[1])
+return { count, ttl }
+`
 
-function cleanup(store: Record<string, { count: number; resetAt: number }>) {
+function checkMemory(key: string, maxAttempts: number, windowMs: number): RateLimitResult {
   const now = Date.now()
-  let changed = false
-  for (const key of Object.keys(store)) {
-    if (now > store[key].resetAt) {
-      delete store[key]
-      changed = true
-    }
+  const current = memoryFallback.get(key)
+  const entry = !current || current.resetAt <= now
+    ? { count: 1, resetAt: now + windowMs }
+    : { count: current.count + 1, resetAt: current.resetAt }
+  memoryFallback.set(key, entry)
+
+  return {
+    allowed: entry.count <= maxAttempts,
+    remaining: Math.max(0, maxAttempts - entry.count),
+    resetAt: entry.resetAt,
   }
-  return changed
 }
 
 export function rateLimit(prefix: string, maxAttempts: number, windowMs: number) {
   return {
-    check: (identifier: string): { allowed: boolean; remaining: number; resetAt: number } => {
-      const store = readStore()
-      const changed = cleanup(store)
-      if (changed) writeStore(store)
+    check: async (identifier: string): Promise<RateLimitResult> => {
+      const key = `amenallah:rate:${prefix}:${identifier}`
+      const redis = await getRedisClient()
+      if (!redis) return checkMemory(key, maxAttempts, windowMs)
 
-      const key = `${prefix}:${identifier}`
-      const now = Date.now()
-      const existing = store[key]
-
-      if (!existing || now > existing.resetAt) {
-        store[key] = { count: 1, resetAt: now + windowMs }
-        writeStore(store)
-        return { allowed: true, remaining: maxAttempts - 1, resetAt: now + windowMs }
+      try {
+        const result = await redis.eval(CHECK_SCRIPT, {
+          keys: [key],
+          arguments: [String(windowMs)],
+        }) as [number, number]
+        const [count, ttl] = result.map(Number)
+        return {
+          allowed: count <= maxAttempts,
+          remaining: Math.max(0, maxAttempts - count),
+          resetAt: Date.now() + Math.max(0, ttl),
+        }
+      } catch {
+        return checkMemory(key, maxAttempts, windowMs)
       }
-
-      existing.count++
-      writeStore(store)
-
-      if (existing.count > maxAttempts) {
-        return { allowed: false, remaining: 0, resetAt: existing.resetAt }
-      }
-
-      return { allowed: true, remaining: maxAttempts - existing.count, resetAt: existing.resetAt }
     },
-    reset: (identifier: string) => {
-      const store = readStore()
-      delete store[`${prefix}:${identifier}`]
-      writeStore(store)
+    reset: async (identifier: string): Promise<void> => {
+      const key = `amenallah:rate:${prefix}:${identifier}`
+      memoryFallback.delete(key)
+      const redis = await getRedisClient()
+      if (redis) await redis.del(key).catch(() => undefined)
     },
   }
 }
@@ -73,3 +67,6 @@ export function rateLimit(prefix: string, maxAttempts: number, windowMs: number)
 export const loginLimiter = rateLimit("login", 5, 5 * 60 * 1000)
 export const registerLimiter = rateLimit("register", 3, 60 * 60 * 1000)
 export const forgotPasswordLimiter = rateLimit("forgot-pw", 3, 60 * 60 * 1000)
+export const playbackLimiter = rateLimit("playback", 30, 5 * 60 * 1000)
+export const ingestionLimiter = rateLimit("ingestion", 20, 60 * 60 * 1000)
+export const paymentLimiter = rateLimit("payment", 10, 15 * 60 * 1000)

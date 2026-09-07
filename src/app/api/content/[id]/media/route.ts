@@ -19,15 +19,29 @@ async function resolveMediaUrl(value: string | null | undefined): Promise<string
  * Returns normalized Drive/YouTube/PDF URLs only when authorized.
  * Actual Drive files will be pasted by admins later; this endpoint is ready.
  */
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (process.env.SECURE_CONTENT_ENABLED === "true") {
+      return NextResponse.json(
+        {
+          error: "Legacy media delivery is disabled",
+          code: "USE_PROTECTED_CONTENT_API",
+          playbackEndpoint: `/api/content/${(await params).id}/playback`,
+        },
+        { status: 410, headers: { "Cache-Control": "private, no-store" } }
+      )
+    }
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_LEGACY_MEDIA !== "true") {
+      return NextResponse.json({ error: "Legacy media delivery is disabled" }, { status: 410 })
+    }
+    const { id } = await params
     const user = await getRequestUser(req)
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const content = await prisma.content.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         isFree: true,
@@ -44,7 +58,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
 
-    const access = await getContentAccessInfo(user.id, user.role, params.id)
+    const access = await getContentAccessInfo(user.id, user.role, id)
     if (!access.canAccess) {
       return NextResponse.json(
         { error: "Subscription required", code: "MEDIA_LOCKED", access },

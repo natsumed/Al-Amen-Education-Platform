@@ -112,7 +112,7 @@ export const createPaymentSchema = z.object({
   itemType: z.enum(["SUBSCRIPTION", "CONTENT"]),
   itemId: z.string().optional(),
   plan: z.enum(["FREE", "STUDENT_MONTHLY", "STUDENT_YEARLY", "TEACHER_MONTHLY", "TEACHER_YEARLY"]).optional(),
-  provider: z.enum(["KONNECT", "FLOUCI", "MANUAL"]),
+  provider: z.enum(["CLICTOPAY", "MANUAL"]),
   /** When a parent pays for a linked student — publicId, email, or UUID */
   beneficiaryId: z.string().optional(),
 })

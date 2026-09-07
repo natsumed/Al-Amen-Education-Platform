@@ -2,24 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getRequestUser } from "@/lib/request-auth"
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-}
-
-export function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS })
-}
-
 export async function POST(req: NextRequest) {
   const user = await getRequestUser(req)
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS })
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
   const expoPushToken = typeof body.expoPushToken === "string" ? body.expoPushToken : null
   if (!expoPushToken) {
-    return NextResponse.json({ error: "expoPushToken requis" }, { status: 400, headers: CORS })
+    return NextResponse.json({ error: "expoPushToken requis" }, { status: 400 })
   }
 
   await prisma.deviceToken.upsert({
@@ -32,12 +22,12 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json({ ok: true }, { headers: CORS })
+  return NextResponse.json({ ok: true })
 }
 
 export async function DELETE(req: NextRequest) {
   const user = await getRequestUser(req)
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS })
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
   const expoPushToken = typeof body.expoPushToken === "string" ? body.expoPushToken : null
@@ -45,5 +35,5 @@ export async function DELETE(req: NextRequest) {
     await prisma.deviceToken.deleteMany({ where: { token: expoPushToken, userId: user.id } })
   }
 
-  return NextResponse.json({ ok: true }, { headers: CORS })
+  return NextResponse.json({ ok: true })
 }

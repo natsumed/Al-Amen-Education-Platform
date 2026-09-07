@@ -5,6 +5,7 @@ import { SessionProvider } from "@/providers/session-provider"
 import { LanguageProvider } from "@/providers/language-provider"
 import { ThemeProvider } from "@/providers/theme-provider"
 import { Toaster } from "sonner"
+import { connection } from "next/server"
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -23,11 +24,13 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // A per-request CSP nonce cannot be applied to build-time static HTML.
+  await connection()
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>

@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useLanguage } from "@/providers/language-provider"
 import { Loader2, Copy, Upload, Trash2 } from "lucide-react"
 import { useSession } from "next-auth/react"
+import { signOut } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 import { ModeToggle } from "@/components/mode-toggle"
 
 type MeUser = {
@@ -29,6 +31,7 @@ type MeUser = {
 }
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams()
   const { language, setLanguage } = useLanguage()
   const { update: updateSession } = useSession()
   const isAr = language === "ar"
@@ -47,6 +50,11 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [mfaStatus, setMfaStatus] = useState<{ required: boolean; enabled: boolean } | null>(null)
+  const [mfaSecret, setMfaSecret] = useState("")
+  const [mfaUri, setMfaUri] = useState("")
+  const [mfaCode, setMfaCode] = useState("")
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
 
   const load = () => {
     setLoading(true)
@@ -69,8 +77,30 @@ export default function SettingsPage() {
 
   useEffect(() => {
     load()
+    fetch("/api/security/mfa", { cache: "no-store" }).then((response) => response.json()).then(setMfaStatus).catch(() => undefined)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const beginMfa = async () => {
+    const response = await fetch("/api/security/mfa", { method: "POST" })
+    const data = await response.json()
+    if (!response.ok) return toast.error(data.error || "MFA indisponible")
+    setMfaSecret(data.secret)
+    setMfaUri(data.uri)
+  }
+
+  const confirmMfa = async () => {
+    const response = await fetch("/api/security/mfa", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: mfaCode }),
+    })
+    const data = await response.json()
+    if (!response.ok) return toast.error(data.error || "Code invalide")
+    setRecoveryCodes(data.recoveryCodes || [])
+    setMfaStatus({ required: Boolean(mfaStatus?.required), enabled: true })
+    toast.success("Double authentification activée. Reconnectez-vous avec votre code.")
+  }
 
   const saveProfile = async () => {
     setSaving(true)
@@ -208,7 +238,7 @@ export default function SettingsPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              <Tabs defaultValue="profile" className="w-full">
+              <Tabs defaultValue={searchParams.get("tab") === "security" ? "security" : "profile"} className="w-full">
                 <TabsList className="grid w-full grid-cols-4 h-auto">
                   <TabsTrigger value="profile">{isAr ? "الملف" : "Profil"}</TabsTrigger>
                   <TabsTrigger value="security">{isAr ? "الأمان" : "Sécurité"}</TabsTrigger>
@@ -303,6 +333,33 @@ export default function SettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="security" className="mt-4">
+                  <div className="space-y-4">
+                  <Card className="border-0 shadow-soft ring-1 ring-border/60">
+                    <CardHeader>
+                      <CardTitle>{isAr ? "المصادقة الثنائية" : "Double authentification"}</CardTitle>
+                      <CardDescription>{mfaStatus?.required ? (isAr ? "مطلوبة لهذا الحساب" : "Obligatoire pour ce compte") : (isAr ? "حماية إضافية اختيارية" : "Protection supplémentaire facultative")}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {mfaStatus?.enabled ? <p className="text-sm text-emerald-600">{isAr ? "مفعّلة" : "Activée"}</p> : !mfaSecret ? (
+                        <Button onClick={beginMfa}>{isAr ? "بدء الإعداد" : "Configurer l'application d'authentification"}</Button>
+                      ) : (
+                        <>
+                          <p className="text-sm text-muted-foreground">{isAr ? "أضف هذا المفتاح إلى تطبيق المصادقة:" : "Ajoutez cette clé dans votre application d'authentification :"}</p>
+                          <code className="block break-all rounded bg-muted p-3 text-sm">{mfaSecret}</code>
+                          <details className="text-xs text-muted-foreground"><summary>URI technique</summary><code className="break-all">{mfaUri}</code></details>
+                          <Input inputMode="numeric" autoComplete="one-time-code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} placeholder="123456" maxLength={6} />
+                          <Button onClick={confirmMfa}>{isAr ? "تأكيد" : "Confirmer"}</Button>
+                        </>
+                      )}
+                      {recoveryCodes.length > 0 && (
+                        <div className="rounded border border-amber-300 bg-amber-50 p-4 text-slate-900">
+                          <p className="font-semibold">Codes de récupération — conservez-les hors ligne</p>
+                          <div className="grid grid-cols-2 gap-2 font-mono text-sm mt-2">{recoveryCodes.map((code) => <span key={code}>{code}</span>)}</div>
+                          <Button variant="outline" className="mt-3" onClick={() => signOut({ callbackUrl: "/login" })}>Se reconnecter</Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                   <Card className="border-0 shadow-soft ring-1 ring-border/60">
                     <CardHeader>
                       <CardTitle>{isAr ? "كلمة المرور" : "Mot de passe"}</CardTitle>
@@ -348,6 +405,7 @@ export default function SettingsPage() {
                       </p>
                     </CardContent>
                   </Card>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="prefs" className="mt-4">

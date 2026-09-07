@@ -7,12 +7,15 @@ declare module "next-auth" {
       id: string
       role: Role
       fullName: string
+      mfaEnrollmentRequired?: boolean
     } & DefaultSession["user"]
   }
 
   interface User {
     role: Role
     fullName: string
+    sessionVersion?: number
+    mfaEnrollmentRequired?: boolean
   }
 }
 
@@ -23,5 +26,7 @@ declare module "next-auth/jwt" {
     fullName: string
     lastChecked?: number
     error?: string
+    sessionVersion?: number
+    mfaEnrollmentRequired?: boolean
   }
 }

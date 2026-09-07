@@ -9,7 +9,7 @@ import { generatePublicId, resolveUserByIdentifier } from "@/lib/user-id"
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown"
-    const limit = registerLimiter.check(ip)
+    const limit = await registerLimiter.check(ip)
     if (!limit.allowed) {
       return NextResponse.json({ error: "Trop de tentatives. Réessayez plus tard." }, { status: 429 })
     }
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 
     sendWelcomeEmail(email, fullName).catch(console.error)
 
-    registerLimiter.reset(ip)
+    await registerLimiter.reset(ip)
     return NextResponse.json(
       {
         message: linkPending

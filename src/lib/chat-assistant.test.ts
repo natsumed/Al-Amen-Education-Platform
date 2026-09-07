@@ -1,4 +1,12 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    content: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  },
+}))
 import { offlineAssistantReply, buildAssistantSystemPrompt } from "./chat-assistant"
 import { PRICING_PLANS } from "@/types"
 import { getDaysLeft, getPlanPrice } from "./utils"

@@ -6,11 +6,12 @@ import { getContentAccessInfo } from "@/lib/access-control"
 import { sanitizeContentForAccess } from "@/lib/content-media"
 import { getRequestUser } from "@/lib/request-auth"
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const user = await getRequestUser(req)
     const content = await prisma.content.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         uploadedBy: { select: { fullName: true } },
         reviews: {
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     })
     if (!content) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    const access = await getContentAccessInfo(user?.id || null, user?.role || null, params.id)
+    const access = await getContentAccessInfo(user?.id || null, user?.role || null, id)
     // Never expose external media URLs to anonymous visitors. Even free media
     // is resolved through the authenticated media endpoint below.
     const safe = sanitizeContentForAccess(content, Boolean(user) && access.canAccess)
@@ -31,8 +32,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const session = await auth()
     if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -42,21 +44,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const parsed = updateContentSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-    const content = await prisma.content.update({ where: { id: params.id }, data: parsed.data })
+    const content = await prisma.content.update({ where: { id }, data: parsed.data })
     return NextResponse.json(content)
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const session = await auth()
     if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    await prisma.content.delete({ where: { id: params.id } })
+    await prisma.content.delete({ where: { id } })
     return NextResponse.json({ message: "Supprimé" })
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })

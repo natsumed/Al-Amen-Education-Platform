@@ -22,17 +22,19 @@ import { signMobileToken, verifyMobileToken } from "../src/lib/mobile-auth"
 async function main() {
   const failures: string[] = []
 
-  const signed = signMobileToken({
+  const signed = await signMobileToken({
     sub: "user-1",
     email: "student@edutunisia.tn",
     role: "STUDENT",
     fullName: "Test",
+    deviceSessionId: "device-session-1",
+    sessionVersion: 0,
   })
-  const verified = verifyMobileToken(signed)
+  const verified = await verifyMobileToken(signed)
   if (!verified || verified.sub !== "user-1") failures.push("sign/verify roundtrip failed")
 
   const tampered = signed.slice(0, -4) + "xxxx"
-  if (verifyMobileToken(tampered)) failures.push("tampered token should be rejected")
+  if (await verifyMobileToken(tampered)) failures.push("tampered token should be rejected")
 
   const base = process.env.SMOKE_API_URL || "http://127.0.0.1:3000"
   const loginRes = await fetch(`${base}/api/mobile/auth/login`, {

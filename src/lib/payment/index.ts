@@ -1,13 +1,10 @@
-import { KonnectProvider } from "./konnect"
-import { FlouciProvider } from "./flouci"
+import { ClicToPayProvider } from "./clictopay"
 import type { PaymentProviderInterface } from "./types"
 
 export function getPaymentProvider(provider: string): PaymentProviderInterface {
   switch (provider) {
-    case "KONNECT":
-      return new KonnectProvider()
-    case "FLOUCI":
-      return new FlouciProvider()
+    case "CLICTOPAY":
+      return new ClicToPayProvider()
     default:
       throw new Error(`Unknown payment provider: ${provider}`)
   }

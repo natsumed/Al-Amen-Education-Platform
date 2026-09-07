@@ -10,23 +10,25 @@ datasource db {
 // String fields intentionally remain application-level unions in src/types/index.ts.
 
 model User {
-  id            String    @id @default(uuid())
-  publicId      String    @unique
-  email         String    @unique
-  passwordHash  String?
-  phone         String?
-  fullName      String
-  role          String    @default("STUDENT")
-  avatarUrl     String?
-  googleId      String?   @unique
-  emailVerified DateTime?
-  resetToken    String?
-  resetTokenExp DateTime?
-  isBanned      Boolean   @default(false)
-  preferredLanguage String?
-  emailNotifications Boolean @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String    @id @default(uuid())
+  publicId           String    @unique
+  email              String    @unique
+  passwordHash       String?
+  phone              String?
+  fullName           String
+  role               String    @default("STUDENT")
+  avatarUrl          String?
+  googleId           String?   @unique
+  emailVerified      DateTime?
+  resetToken         String?
+  resetTokenExp      DateTime?
+  isBanned           Boolean   @default(false)
+  preferredLanguage  String?
+  emailNotifications Boolean   @default(true)
+  sessionVersion     Int       @default(0)
+  passwordUpdatedAt  DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   subscriptions          Subscription[]
   payments               Payment[]
@@ -40,6 +42,12 @@ model User {
   uploadedContent        Content[]             @relation("UploadedBy")
   purchases              Purchase[]
   deviceTokens           DeviceToken[]
+  deviceSessions         DeviceSession[]
+  playbackSessions       PlaybackSession[]
+  ingestionJobs          IngestionJob[]        @relation("IngestionRequestedBy")
+  reviewedIngestionJobs  IngestionJob[]        @relation("IngestionReviewedBy")
+  auditEvents            AuditEvent[]
+  mfaCredential          MfaCredential?
 }
 
 model DeviceToken {
@@ -72,17 +80,22 @@ model Subscription {
 }
 
 model Payment {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   userId            String
   beneficiaryUserId String?
   amount            Float
-  currency          String   @default("TND")
+  currency          String    @default("TND")
   provider          String
-  status            String   @default("PENDING")
+  status            String    @default("PENDING")
   transactionRef    String?
+  merchantOrderRef  String?   @unique
+  amountMillis      Int?
+  callbackDigest    String?
+  verifiedAt        DateTime?
+  reconciledAt      DateTime?
   itemType          String
   itemId            String?
-  createdAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
 
   user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   beneficiary User? @relation("PaymentBeneficiary", fields: [beneficiaryUserId], references: [id], onDelete: SetNull)
@@ -114,10 +127,13 @@ model Content {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  uploadedBy User      @relation("UploadedBy", fields: [uploadedById], references: [id])
-  reviews    Review[]
-  progress   Progress[]
-  purchases  Purchase[]
+  uploadedBy       User              @relation("UploadedBy", fields: [uploadedById], references: [id])
+  reviews          Review[]
+  progress         Progress[]
+  purchases        Purchase[]
+  assets           ContentAsset[]
+  playbackSessions PlaybackSession[]
+  ingestionJobs    IngestionJob[]
 
   @@index([grade, subject])
   @@index([contentType])
@@ -189,4 +205,159 @@ model ManualActivationLog {
 
   admin      User @relation("Admin", fields: [adminId], references: [id])
   targetUser User @relation("TargetUser", fields: [targetUserId], references: [id])
+}
+
+model ContentAsset {
+  id                 String   @id @default(uuid())
+  contentId          String?
+  kind               String
+  sourceProvider     String   @default("DRIVE")
+  sourceRefEncrypted String?
+  deliveryProvider   String?
+  deliveryAssetId    String?
+  status             String   @default("PENDING")
+  mimeType           String?
+  checksumSha256     String?
+  sizeBytes          BigInt?
+  pageCount          Int?
+  failureReason      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  content          Content?          @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  ingestionJobs    IngestionJob[]
+  playbackSessions PlaybackSession[]
+
+  @@index([contentId, kind])
+  @@index([status])
+}
+
+model IngestionJob {
+  id                 String    @id @default(uuid())
+  requestedById      String
+  reviewedById       String?
+  contentId          String?
+  assetId            String?
+  sourceType         String
+  sourceRefEncrypted String
+  status             String    @default("QUEUED")
+  progressPercent    Int       @default(0)
+  instructions       String?
+  proposal           Json?
+  confidence         Float?
+  errorCode          String?
+  errorMessage       String?
+  approvedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  requestedBy User          @relation("IngestionRequestedBy", fields: [requestedById], references: [id])
+  reviewedBy  User?         @relation("IngestionReviewedBy", fields: [reviewedById], references: [id])
+  content     Content?      @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  asset       ContentAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([requestedById])
+}
+
+model DeviceSession {
+  id         String    @id @default(uuid())
+  userId     String
+  deviceId   String
+  platform   String
+  deviceName String?
+  attestedAt DateTime?
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens    RefreshToken[]
+  playbackSessions PlaybackSession[]
+
+  @@unique([userId, deviceId])
+  @@index([userId, revokedAt])
+}
+
+model RefreshToken {
+  id              String    @id @default(uuid())
+  deviceSessionId String
+  tokenHash       String    @unique
+  expiresAt       DateTime
+  usedAt          DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  deviceSession DeviceSession @relation(fields: [deviceSessionId], references: [id], onDelete: Cascade)
+
+  @@index([deviceSessionId, expiresAt])
+}
+
+model PlaybackSession {
+  id              String    @id @default(uuid())
+  sessionCode     String    @unique
+  userId          String
+  contentId       String
+  assetId         String
+  deviceSessionId String?
+  ipHash          String?
+  expiresAt       DateTime
+  endedAt         DateTime?
+  createdAt       DateTime  @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content       Content        @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  asset         ContentAsset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  deviceSession DeviceSession? @relation(fields: [deviceSessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, endedAt, expiresAt])
+  @@index([contentId])
+}
+
+model MfaCredential {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique
+  type                   String    @default("TOTP")
+  secretEncrypted        String
+  recoveryCodesEncrypted String?
+  enabledAt              DateTime?
+  lastUsedCounter        BigInt?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  targetType String?
+  targetId   String?
+  ipHash     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+model MobileRelease {
+  id             String    @id @default(uuid())
+  platform       String
+  version        String
+  buildNumber    Int
+  url            String
+  checksumSha256 String?
+  sizeBytes      BigInt?
+  minimumVersion String?
+  appStoreUrl    String?
+  isPublished    Boolean   @default(false)
+  releasedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@unique([platform, buildNumber])
+  @@index([platform, isPublished, buildNumber])
 }

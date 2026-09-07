@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Copy an EAS-built APK into the Next.js public downloads folder.
+# Copy an EAS-built APK into the persistent server release directory.
 # Usage:
 #   ./scripts/publish-mobile-apk.sh /path/to/amenallah.apk
 #   ./scripts/publish-mobile-apk.sh https://expo.dev/.../artifact.apk
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DEST_DIR="$ROOT/public/downloads"
-DEST="$DEST_DIR/amenallah-latest.apk"
+DEST_DIR="${AMENALLAH_RELEASE_DIR:-/srv/amenallah/releases}"
+VERSION="${MOBILE_VERSION:-1.2.0}"
+DEST="$DEST_DIR/amenallah-${VERSION}.apk"
 SRC="${1:-}"
 
 if [[ -z "$SRC" ]]; then
@@ -27,5 +28,6 @@ else
 fi
 
 ls -lh "$DEST"
-echo "Served at: /downloads/amenallah-latest.apk"
+sha256sum "$DEST"
+echo "Served at: /downloads/amenallah-${VERSION}.apk"
 echo "Page: /download"

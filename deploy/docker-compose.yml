@@ -15,7 +15,7 @@ services:
       retries: 5
 
   prod-app:
-    image: ${IMAGE_NAME:?IMAGE_NAME is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ${IMAGE_NAME:?IMAGE_NAME is required}:${PROD_IMAGE_TAG:?PROD_IMAGE_TAG is required}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -26,6 +26,19 @@ services:
       NEXTAUTH_URL: https://amanallahedition.com
       DATABASE_URL: postgresql://platform:${PROD_POSTGRES_PASSWORD}@prod-db:5432/platform?schema=public
       AUTH_SECRET: ${PROD_AUTH_SECRET:?PROD_AUTH_SECRET is required}
+      REDIS_URL: redis://prod-valkey:6379
+      DATA_ENCRYPTION_KEY: ${PROD_DATA_ENCRYPTION_KEY:?PROD_DATA_ENCRYPTION_KEY is required}
+      AUDIT_HASH_KEY: ${PROD_AUDIT_HASH_KEY:?PROD_AUDIT_HASH_KEY is required}
+      ALLOW_LEGACY_MEDIA: ${PROD_ALLOW_LEGACY_MEDIA:-true}
+      SECURE_CONTENT_ENABLED: ${PROD_SECURE_CONTENT_ENABLED:-false}
+      VDOCIPHER_API_SECRET: ${VDOCIPHER_API_SECRET:-}
+      MOBILE_ATTESTATION_ENFORCED: ${MOBILE_ATTESTATION_ENFORCED:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_INGESTION_MODEL: ${OPENAI_INGESTION_MODEL:-gpt-5-mini}
+      CLICTOPAY_ENABLED: ${CLICTOPAY_ENABLED:-false}
+      CLICTOPAY_MERCHANT_ID: ${CLICTOPAY_MERCHANT_ID:-}
+      CLICTOPAY_API_URL: ${CLICTOPAY_API_URL:-}
+      CLICTOPAY_API_SECRET: ${CLICTOPAY_API_SECRET:-}
       NEXT_PUBLIC_APP_URL: https://amanallahedition.com
       NEXT_PUBLIC_APP_NAME: Amenallah Edition
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:-}
@@ -38,9 +51,23 @@ services:
     depends_on:
       prod-db:
         condition: service_healthy
+      prod-valkey:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://' + process.env.HOSTNAME + ':3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://' + process.env.HOSTNAME + ':3000/api/health/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 15s
+      timeout: 5s
+      retries: 5
+
+  prod-valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - prod_valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
       timeout: 5s
       retries: 5
 
@@ -60,7 +87,7 @@ services:
       retries: 5
 
   staging-app:
-    image: ${IMAGE_NAME:?IMAGE_NAME is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ${IMAGE_NAME:?IMAGE_NAME is required}:${STAGING_IMAGE_TAG:?STAGING_IMAGE_TAG is required}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -69,6 +96,19 @@ services:
       NEXTAUTH_URL: https://staging.amanallahedition.com
       DATABASE_URL: postgresql://platform:${STAGING_POSTGRES_PASSWORD}@staging-db:5432/platform?schema=public
       AUTH_SECRET: ${STAGING_AUTH_SECRET:?STAGING_AUTH_SECRET is required}
+      REDIS_URL: redis://staging-valkey:6379
+      DATA_ENCRYPTION_KEY: ${STAGING_DATA_ENCRYPTION_KEY:?STAGING_DATA_ENCRYPTION_KEY is required}
+      AUDIT_HASH_KEY: ${STAGING_AUDIT_HASH_KEY:?STAGING_AUDIT_HASH_KEY is required}
+      ALLOW_LEGACY_MEDIA: ${STAGING_ALLOW_LEGACY_MEDIA:-true}
+      SECURE_CONTENT_ENABLED: ${STAGING_SECURE_CONTENT_ENABLED:-false}
+      VDOCIPHER_API_SECRET: ${VDOCIPHER_API_SECRET:-}
+      MOBILE_ATTESTATION_ENFORCED: ${MOBILE_ATTESTATION_ENFORCED:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_INGESTION_MODEL: ${OPENAI_INGESTION_MODEL:-gpt-5-mini}
+      CLICTOPAY_ENABLED: ${CLICTOPAY_ENABLED:-false}
+      CLICTOPAY_MERCHANT_ID: ${CLICTOPAY_MERCHANT_ID:-}
+      CLICTOPAY_API_URL: ${CLICTOPAY_API_URL:-}
+      CLICTOPAY_API_SECRET: ${CLICTOPAY_API_SECRET:-}
       NEXT_PUBLIC_APP_URL: https://staging.amanallahedition.com
       NEXT_PUBLIC_APP_NAME: Amenallah Edition (Staging)
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:-}
@@ -81,9 +121,23 @@ services:
     depends_on:
       staging-db:
         condition: service_healthy
+      staging-valkey:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://' + process.env.HOSTNAME + ':3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://' + process.env.HOSTNAME + ':3000/api/health/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 15s
+      timeout: 5s
+      retries: 5
+
+  staging-valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - staging_valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
       timeout: 5s
       retries: 5
 
@@ -101,6 +155,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/amenallah/releases:/srv/amenallah/releases:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -111,6 +166,8 @@ services:
 
 volumes:
   prod_db_data:
+  prod_valkey_data:
   staging_db_data:
+  staging_valkey_data:
   caddy_data:
   caddy_config:

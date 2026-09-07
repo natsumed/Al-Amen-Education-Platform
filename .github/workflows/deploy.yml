@@ -77,7 +77,7 @@ jobs:
         run: |
           install -m 600 /dev/null deploy_key
           printf '%s\n' "$DEPLOY_SSH_KEY" > deploy_key
-          ssh -i deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n env IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} /opt/amenallah/deploy.sh ${IMAGE_TAG}"
+          ssh -i deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n /opt/amenallah/deploy.sh staging ${IMAGE_TAG}"
           rm -f deploy_key
 
   deploy-production:
@@ -95,5 +95,5 @@ jobs:
         run: |
           install -m 600 /dev/null deploy_key
           printf '%s\n' "$DEPLOY_SSH_KEY" > deploy_key
-          ssh -i deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n env IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} /opt/amenallah/deploy.sh ${IMAGE_TAG}"
+          ssh -i deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n /opt/amenallah/deploy.sh production ${IMAGE_TAG}"
           rm -f deploy_key

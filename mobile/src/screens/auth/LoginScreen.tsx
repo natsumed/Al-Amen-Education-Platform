@@ -31,6 +31,7 @@ export function LoginScreen({ navigation }: Props) {
   const themeColors = useColors()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [totpCode, setTotpCode] = useState("")
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
   const [showApi, setShowApi] = useState(false)
@@ -43,6 +44,7 @@ export function LoginScreen({ navigation }: Props) {
   })
 
   useEffect(() => {
+    if (!__DEV__) return
     void AsyncStorage.getItem(API_OVERRIDE_KEY).then((stored) => {
       if (stored) {
         setApiBaseUrlOverride(stored)
@@ -52,6 +54,7 @@ export function LoginScreen({ navigation }: Props) {
   }, [])
 
   const saveApiUrl = async () => {
+    if (!__DEV__) return
     const cleaned = apiUrl.trim().replace(/\/$/, "")
     if (!/^https?:\/\/.+/.test(cleaned)) {
       setError(language === "ar" ? "رابط API غير صالح" : "URL API invalide (http://…)")
@@ -71,7 +74,7 @@ export function LoginScreen({ navigation }: Props) {
         setError(language === "ar" ? "أدخل البريد وكلمة المرور" : "Saisissez email et mot de passe")
         return
       }
-      await login(email.trim(), password)
+      await login(email.trim(), password, totpCode.trim() || undefined)
     } catch (e: unknown) {
       let msg = e instanceof Error ? e.message : t("loginFailed", language)
       if (msg.includes("joindre") || msg.includes("connecter") || msg.includes("Network")) {
@@ -107,7 +110,7 @@ export function LoginScreen({ navigation }: Props) {
             resizeMode="contain"
             accessibilityLabel="Amenallah"
           />
-          <Pressable onLongPress={() => setShowApi((v) => !v)}>
+          <Pressable onLongPress={() => { if (__DEV__) setShowApi((v) => !v) }}>
             <Text style={[styles.brand, { color: themeColors.primary }]}>{t("brand", language)}</Text>
           </Pressable>
           <Text style={[styles.sub, { color: themeColors.muted }]}>{t("brandSub", language)}</Text>
@@ -144,6 +147,14 @@ export function LoginScreen({ navigation }: Props) {
             placeholder="••••••••"
             textContentType="password"
           />
+          <TextField
+            label={language === "ar" ? "رمز الأمان (إن كان مفعّلاً)" : "Code de sécurité (si activé)"}
+            keyboardType="number-pad"
+            value={totpCode}
+            onChangeText={setTotpCode}
+            placeholder="123456"
+            textContentType="oneTimeCode"
+          />
 
           <PrimaryButton label={t("login", language)} onPress={onSubmit} loading={busy} />
           <PrimaryButton
@@ -163,7 +174,7 @@ export function LoginScreen({ navigation }: Props) {
           <Text style={[styles.debug, { color: themeColors.muted }]}>
             {t("version", language)} {version}
           </Text>
-          {(__DEV__ || showApi) && (
+          {__DEV__ && showApi && (
             <View style={styles.apiBox}>
               <TextField
                 label="API URL"

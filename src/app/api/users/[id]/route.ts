@@ -3,8 +3,9 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { adminUpdateUserSchema } from "@/lib/validations"
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const session = await auth()
     if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -23,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const user = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data,
       select: {
         id: true,
@@ -43,19 +44,20 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const isSelf = session.user.id === params.id
+    const isSelf = session.user.id === id
     const isAdmin = session.user.role === "ADMIN"
     let isLinkedParent = false
 
     if (!isSelf && !isAdmin && session.user.role === "PARENT") {
       const link = await prisma.parentLink.findUnique({
         where: {
-          parentId_studentId: { parentId: session.user.id, studentId: params.id },
+          parentId_studentId: { parentId: session.user.id, studentId: id },
         },
       })
       isLinkedParent = link?.status === "ACCEPTED"
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         email: true,

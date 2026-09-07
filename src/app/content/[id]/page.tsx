@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Lock, Download, Play, BookOpen, ArrowLeft, Star, Clock, Eye, Globe, FileText, Film, Zap, Share2, LogOut, User } from "lucide-react"
+import { Lock, Play, BookOpen, ArrowLeft, Star, Clock, Eye, Globe, FileText, Film, Zap, Share2, LogOut, User } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import { contentTypeLabel, gradeLabel, getYouTubeId } from "@/lib/utils"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -45,6 +45,8 @@ export default function ContentDetailPage() {
   const dashboardUrl = user ? `/${user.role?.toLowerCase()}` : "/login"
   const [content, setContent] = useState<any>(null)
   const [media, setMedia] = useState<{ youtubeUrl?: string | null; pdfUrl?: string | null; gifUrl?: string | null } | null>(null)
+  const [protectedPlayback, setProtectedPlayback] = useState<{ otp: string; playbackInfo: string; sessionCode: string } | null>(null)
+  const [documentManifest, setDocumentManifest] = useState<{ pageCount: number; currentPage: number; pages: Array<{ page: number; url: string }> } | null>(null)
   const [loading, setLoading] = useState(true)
   const [reviews, setReviews] = useState<any[]>([])
   const [relatedContent, setRelatedContent] = useState<any[]>([])
@@ -65,10 +67,24 @@ export default function ContentDetailPage() {
           })
           if (d.access?.canAccess) {
             try {
-              const mediaRes = await fetch(`/api/content/${d.id}/media`)
-              if (mediaRes.ok) {
-                const mediaData = await mediaRes.json()
-                setMedia(mediaData.media || null)
+              const playbackRes = await fetch(`/api/content/${d.id}/playback`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ client: "web" }),
+              })
+              if (playbackRes.ok) {
+                setProtectedPlayback(await playbackRes.json())
+              } else {
+                const documentRes = await fetch(`/api/content/${d.id}/document/manifest?page=1`)
+                if (documentRes.ok) {
+                  setDocumentManifest(await documentRes.json())
+                } else {
+                  const mediaRes = await fetch(`/api/content/${d.id}/media`)
+                  if (mediaRes.ok) {
+                    const mediaData = await mediaRes.json()
+                    setMedia(mediaData.media || null)
+                  }
+                }
               }
             } catch {
               /* ignore — locked or network */
@@ -124,7 +140,6 @@ export default function ContentDetailPage() {
   const title = isAr ? content.titleAr : content.titleFr
   const description = isAr ? content.descriptionAr : content.descriptionFr
   const canAccess = Boolean(content.access?.canAccess)
-  const canDownload = Boolean(content.access?.canDownload)
   // Media is only populated by the authenticated, access-controlled endpoint.
   // Do not fall back to URLs from the public detail response.
   const videoUrl = media?.youtubeUrl || null
@@ -134,6 +149,11 @@ export default function ContentDetailPage() {
   const isDriveVideo = Boolean(videoUrl && videoUrl.includes("drive.google.com"))
   const TypeIcon = TYPE_ICONS[content.contentType] || Film
   const avgRating = reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : null
+
+  const openDocumentPage = async (page: number) => {
+    const response = await fetch(`/api/content/${id}/document/manifest?page=${page}`, { cache: "no-store" })
+    if (response.ok) setDocumentManifest(await response.json())
+  }
 
   return (
     <ContentProtection enabled={canAccess}>
@@ -256,11 +276,20 @@ export default function ContentDetailPage() {
               </Card>
             )}
 
-            {/* Video Player — YouTube embed or Drive preview iframe */}
-            {(ytId || isDriveVideo) && (canAccess ? (
+            {/* Protected player, with the legacy embed retained only during migration. */}
+            {(protectedPlayback || ytId || isDriveVideo) && (canAccess ? (
               <Card className="overflow-hidden border-0 shadow-lg">
                 <div className="relative aspect-video bg-black">
-                  {ytId ? (
+                  {protectedPlayback ? (
+                    <iframe
+                      src={`https://player.vdocipher.com/v2/?otp=${encodeURIComponent(protectedPlayback.otp)}&playbackInfo=${encodeURIComponent(protectedPlayback.playbackInfo)}`}
+                      title={title}
+                      allow="encrypted-media; fullscreen"
+                      allowFullScreen
+                      referrerPolicy="strict-origin"
+                      className="absolute inset-0 w-full h-full"
+                    />
+                  ) : ytId ? (
                     <iframe
                       src={`https://www.youtube.com/embed/${ytId}?rel=0`}
                       title={title}
@@ -306,7 +335,25 @@ export default function ContentDetailPage() {
               </Card>
             ))}
 
-            {/* PDF Section */}
+            {documentManifest && canAccess && (
+              <Card className="border-0 shadow-sm overflow-hidden">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />{isAr ? "قارئ محمي" : "Lecteur protégé"}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 select-none">
+                  {documentManifest.pages.filter((item) => item.page === documentManifest.currentPage).map((item) => (
+                    <img key={item.page} src={item.url} alt={`${title} — ${item.page}`} draggable={false} className="w-full rounded-lg border pointer-events-none" />
+                  ))}
+                  <div className="flex items-center justify-between">
+                    <Button variant="outline" disabled={documentManifest.currentPage <= 1} onClick={() => openDocumentPage(documentManifest.currentPage - 1)}>{isAr ? "السابق" : "Précédent"}</Button>
+                    <span className="text-sm text-muted-foreground">{documentManifest.currentPage} / {documentManifest.pageCount}</span>
+                    <Button variant="outline" disabled={documentManifest.currentPage >= documentManifest.pageCount} onClick={() => openDocumentPage(documentManifest.currentPage + 1)}>{isAr ? "التالي" : "Suivant"}</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Transitional legacy PDF section; disabled with SECURE_CONTENT_ENABLED. */}
             {pdfUrl && canAccess && (
               <Card className="border-0 shadow-sm">
                 <CardContent className="p-5 space-y-4">
@@ -322,22 +369,7 @@ export default function ContentDetailPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          {isAr ? "عرض" : "Voir"}
-                        </Button>
-                      </a>
-                      {canDownload && (
-                        <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                          <Button size="sm">
-                            <Download className="h-4 w-4 mr-2" />
-                            {isAr ? "تحميل" : "Télécharger"}
-                          </Button>
-                        </a>
-                      )}
-                    </div>
+                    <Badge variant="outline">{isAr ? "قراءة داخل المنصة" : "Lecture dans la plateforme"}</Badge>
                   </div>
                   {pdfUrl.includes("drive.google.com") && (
                     <div className="aspect-[4/3] w-full rounded-lg overflow-hidden border bg-muted">
@@ -372,16 +404,6 @@ export default function ContentDetailPage() {
                       <img src={gifUrl} alt={title} className="max-w-full max-h-96 rounded-lg shadow-sm" />
                     )}
                   </div>
-                  {canDownload && (
-                    <div className="p-4 border-t">
-                      <a href={gifUrl} target="_blank" rel="noopener noreferrer">
-                        <Button size="sm" className="w-full">
-                          <Download className="h-4 w-4 mr-2" />
-                          {isAr ? "تحميل الرسوم المتحركة" : "Télécharger l'animation"}
-                        </Button>
-                      </a>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             )}

@@ -4,17 +4,27 @@
 
 {$APP_DOMAIN} {
   encode zstd gzip
+  handle_path /downloads/* {
+    root * /srv/amenallah/releases
+    header Cache-Control "public, max-age=31536000, immutable"
+    header Content-Disposition "attachment"
+    file_server
+  }
+  handle {
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains"
     X-Content-Type-Options "nosniff"
     X-Frame-Options "DENY"
     Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)"
+    -Server
   }
   reverse_proxy prod-app:3000 {
     # Keep the public request origin intact for Next.js middleware and Auth.js.
     header_up Host {host}
     header_up X-Forwarded-Host {host}
     header_up X-Forwarded-Proto https
+  }
   }
 }
 
@@ -27,6 +37,14 @@ www.{$APP_DOMAIN} {
     {$STAGING_BASIC_AUTH_USER} {$STAGING_BASIC_AUTH_HASH}
   }
   encode zstd gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)"
+    -Server
+  }
   reverse_proxy staging-app:3000 {
     header_up Host {host}
     header_up X-Forwarded-Host {host}

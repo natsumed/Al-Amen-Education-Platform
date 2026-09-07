@@ -73,8 +73,7 @@ function CheckoutForm() {
             <div className="space-y-2">
               {[
                 { value: "MANUAL", label: "Paiement en espèces (activation admin sous 24h)" },
-                { value: "KONNECT", label: "Konnect (Bientôt disponible)", disabled: true },
-                { value: "FLOUCI", label: "Flouci (Bientôt disponible)", disabled: true },
+                { value: "CLICTOPAY", label: "SMT ClicToPay (après certification bancaire)", disabled: true },
               ].map(opt => (
                 <label key={opt.value} className={`flex items-center gap-3 p-3 border rounded-md ${opt.disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${provider === opt.value ? "border-primary bg-primary/5" : ""}`}>
                   <input type="radio" value={opt.value} checked={provider === opt.value} disabled={opt.disabled} onChange={e => setProvider(e.target.value)} className="accent-primary" />

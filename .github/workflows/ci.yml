@@ -21,7 +21,41 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
+
+  mobile-typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - name: Reject critical mobile dependency advisories
+        run: npm audit --omit=dev --audit-level=critical
+
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm sbom --sbom-format cyclonedx > amenallah-web.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: amenallah-sbom
+          path: amenallah-web.cdx.json
+          retention-days: 30
 
   web-typecheck:
     runs-on: ubuntu-latest

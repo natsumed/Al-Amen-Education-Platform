@@ -39,7 +39,7 @@ Then run `sshd -t && systemctl reload ssh` and keep the current root session ope
 mkdir -p /opt/amenallah
 chown -R deploy:deploy /opt/amenallah
 # Copy deploy/docker-compose.yml, deploy/Caddyfile, deploy/deploy.sh,
-# deploy/rollback.sh, and deploy/backup.sh into /opt/amenallah.
+# deploy/rollback.sh, deploy/restore.sh, and deploy/backup.sh into /opt/amenallah.
 chmod 750 /opt/amenallah/*.sh
 ```
 
@@ -75,7 +75,8 @@ In GitHub, make the GHCR package pullable by the VPS and create protected `stagi
 Start with the first image tag produced by the deployment workflow:
 
 ```bash
-/opt/amenallah/deploy.sh <commit-sha>
+/opt/amenallah/deploy.sh staging <commit-sha>
+/opt/amenallah/deploy.sh production <commit-sha>
 ```
 
 Verify both domains, authentication, database migration, uploads, and logs. Do not seed test accounts into production. Configure a systemd timer or provider scheduler to run `/opt/amenallah/backup.sh` daily and send only failures to the operator/support address.
@@ -83,7 +84,7 @@ Verify both domains, authentication, database migration, uploads, and logs. Do n
 ## 5. Rollback
 
 ```bash
-/opt/amenallah/rollback.sh <previous-known-good-commit-sha>
+/opt/amenallah/rollback.sh production <previous-known-good-commit-sha>
 ```
 
 Database migrations must be backward-compatible with the preceding image before a production release is approved. Restore database backups only into staging first, then promote after verification.

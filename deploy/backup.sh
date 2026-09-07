@@ -15,5 +15,10 @@ cd "$ROOT_DIR"
 docker run --rm --env-file "$RESTIC_ENV_FILE" -v "$ROOT_DIR:/backup:ro" restic/restic:0.18.0 \
   backup /backup --exclude runtime.env --exclude restic.env --exclude caddy_data --exclude caddy_config
 
+if [[ -d /srv/amenallah/releases ]]; then
+  docker run --rm --env-file "$RESTIC_ENV_FILE" -v /srv/amenallah/releases:/releases:ro restic/restic:0.18.0 \
+    backup /releases
+fi
+
 docker run --rm --env-file "$RESTIC_ENV_FILE" restic/restic:0.18.0 forget \
   --keep-daily 7 --keep-weekly 4 --keep-monthly 12 --prune

@@ -5,11 +5,15 @@ import { createPaymentSchema } from "@/lib/validations"
 import { getPaymentProvider } from "@/lib/payment"
 import { getPlanPrice } from "@/lib/utils"
 import { resolveUserByIdentifier } from "@/lib/user-id"
+import { paymentLimiter } from "@/lib/rate-limit"
+import { randomBytes } from "crypto"
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const limit = await paymentLimiter.check(session.user.id)
+    if (!limit.allowed) return NextResponse.json({ error: "Trop de tentatives de paiement" }, { status: 429 })
 
     const body = await req.json()
     const parsed = createPaymentSchema.safeParse(body)
@@ -60,6 +64,8 @@ export async function POST(req: NextRequest) {
     }
 
     const amount = plan ? getPlanPrice(plan) : 0
+    const amountMillis = Math.round(amount * 1_000)
+    const merchantOrderRef = `AMEN-${Date.now().toString(36).toUpperCase()}-${randomBytes(5).toString("hex").toUpperCase()}`
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
     const payment = await prisma.payment.create({
@@ -67,6 +73,8 @@ export async function POST(req: NextRequest) {
         userId: session.user.id,
         beneficiaryUserId,
         amount,
+        amountMillis,
+        merchantOrderRef,
         provider,
         itemType,
         itemId: plan,
@@ -83,11 +91,12 @@ export async function POST(req: NextRequest) {
 
     const paymentProvider = getPaymentProvider(provider)
     const paymentSession = await paymentProvider.createPayment({
-      amount,
+      amountMillis,
       currency: "TND",
       description: `Abonnement ${plan}`,
       returnUrl: `${appUrl}/checkout/return?paymentId=${payment.id}`,
       paymentId: payment.id,
+      merchantOrderRef,
     })
 
     return NextResponse.json({ paymentSession, paymentId: payment.id })

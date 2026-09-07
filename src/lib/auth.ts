@@ -2,15 +2,17 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
 import bcrypt from "bcryptjs"
+import { verify as verifyArgon2, hash as hashArgon2 } from "@node-rs/argon2"
 import { prisma } from "./prisma"
 import type { Role } from "@/types"
 import { loginLimiter } from "./rate-limit"
+import { verifyMfaCode } from "./mfa"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET,
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 8 * 60 * 60,
   },
   providers: [
     ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
@@ -25,33 +27,45 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        totpCode: { label: "Security code", type: "text" },
       },
       authorize: async (credentials) => {
         if (!credentials?.email || !credentials?.password) return null
 
         // Rate limiting check
         const email = String(credentials.email).trim().toLowerCase()
-        const limit = loginLimiter.check(email)
+        const limit = await loginLimiter.check(email)
         if (!limit.allowed) {
           throw new Error("Too many login attempts. Please try again later.")
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-        })
+        const user = await prisma.user.findUnique({ where: { email }, include: { mfaCredential: true } })
 
         if (!user || !user.passwordHash) return null
         if (user.isBanned) return null
 
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        )
+        const password = credentials.password as string
+        const isValid = user.passwordHash.startsWith("$argon2")
+          ? await verifyArgon2(user.passwordHash, password)
+          : await bcrypt.compare(password, user.passwordHash)
 
         if (!isValid) return null
 
+        const mfaEnabled = Boolean(user.mfaCredential?.enabledAt)
+        if (mfaEnabled) {
+          const code = typeof credentials.totpCode === "string" ? credentials.totpCode : ""
+          if (!code || !(await verifyMfaCode(user.id, code))) return null
+        }
+
         // Reset rate limit on successful login
-        loginLimiter.reset(email)
+        await loginLimiter.reset(email)
+
+        if (!user.passwordHash.startsWith("$argon2")) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { passwordHash: await hashArgon2(password), passwordUpdatedAt: new Date() },
+          })
+        }
 
         return {
           id: user.id,
@@ -60,6 +74,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           image: user.avatarUrl,
           role: user.role as Role,
           fullName: user.fullName,
+          sessionVersion: user.sessionVersion,
+          mfaEnrollmentRequired: ["ADMIN", "TEACHER"].includes(user.role) && !mfaEnabled,
         }
       },
     }),
@@ -70,12 +86,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email! },
+            include: { mfaCredential: true },
           })
 
           if (!existingUser) {
             const { generatePublicId } = await import("./user-id")
             const publicId = await generatePublicId()
-            await prisma.user.create({
+            const created = await prisma.user.create({
               data: {
                 email: user.email!,
                 fullName: user.name ?? "Google User",
@@ -86,14 +103,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 publicId,
               },
             })
+            Object.assign(user, {
+              id: created.id,
+              role: created.role,
+              fullName: created.fullName,
+              sessionVersion: created.sessionVersion,
+              mfaEnrollmentRequired: false,
+            })
           } else {
             if (existingUser.isBanned) return false
+            // Privileged accounts must use the credential flow so the platform's
+            // own MFA policy cannot be bypassed by an OAuth login.
+            if (["ADMIN", "TEACHER"].includes(existingUser.role)) return false
             await prisma.user.update({
               where: { id: existingUser.id },
               data: {
                 googleId: account.providerAccountId,
                 avatarUrl: user.image ?? existingUser.avatarUrl,
               },
+            })
+            Object.assign(user, {
+              id: existingUser.id,
+              role: existingUser.role,
+              fullName: existingUser.fullName,
+              sessionVersion: existingUser.sessionVersion,
+              mfaEnrollmentRequired: false,
             })
           }
         } catch (error) {
@@ -112,6 +146,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.fullName = (user as { fullName?: string }).fullName ?? user.name ?? ""
         token.picture = user.image ?? null
         token.lastChecked = Date.now()
+        token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0
+        token.mfaEnrollmentRequired = (user as { mfaEnrollmentRequired?: boolean }).mfaEnrollmentRequired ?? false
       }
 
       // Client called session.update({ image }) after avatar upload
@@ -128,15 +164,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { role: true, fullName: true, isBanned: true, avatarUrl: true },
+            select: { role: true, fullName: true, isBanned: true, avatarUrl: true, sessionVersion: true },
           })
-          if (!dbUser || dbUser.isBanned) {
+          if (!dbUser || dbUser.isBanned || dbUser.sessionVersion !== token.sessionVersion) {
             token.error = "banned"
           } else {
             token.role = dbUser.role as Role
             token.fullName = dbUser.fullName
             token.picture = dbUser.avatarUrl
             delete token.error
+            if (dbUser.sessionVersion === token.sessionVersion) {
+              const mfa = await prisma.mfaCredential.findUnique({ where: { userId: token.id as string }, select: { enabledAt: true } })
+              token.mfaEnrollmentRequired = ["ADMIN", "TEACHER"].includes(dbUser.role) && !mfa?.enabledAt
+            }
           }
           token.lastChecked = Date.now()
         } catch {
@@ -158,6 +198,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.fullName = token.fullName as string
         session.user.name = (token.fullName as string) || session.user.name
         session.user.image = (token.picture as string | null | undefined) ?? null
+        session.user.mfaEnrollmentRequired = token.mfaEnrollmentRequired
       }
       return session
     },

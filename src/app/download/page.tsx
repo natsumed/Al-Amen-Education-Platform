@@ -6,13 +6,29 @@ import { Smartphone, Download, ShieldCheck, QrCode, Apple } from "lucide-react"
 import { MarketingNavbar } from "@/components/layout/marketing-navbar"
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/providers/language-provider"
+import { useEffect, useState } from "react"
 
-const APK_HREF = "/downloads/amenallah-latest.apk"
-const APP_VERSION = "1.2.0"
+type ReleaseManifest = {
+  ready: boolean
+  android: null | { version: string; url: string; checksumSha256?: string | null; sizeBytes?: string | null }
+  ios: null | { version: string; appStoreUrl?: string | null }
+}
 
 export default function DownloadPage() {
   const { language } = useLanguage()
   const isAr = language === "ar"
+  const [manifest, setManifest] = useState<ReleaseManifest | null>(null)
+
+  useEffect(() => {
+    fetch("/api/mobile/releases/current")
+      .then((response) => response.json())
+      .then(setManifest)
+      .catch(() => setManifest({ ready: false, android: null, ios: null }))
+  }, [])
+
+  const releaseReady = Boolean(manifest?.ready)
+  const android = releaseReady ? manifest?.android : null
+  const ios = releaseReady ? manifest?.ios : null
 
   const steps = isAr
     ? [
@@ -56,17 +72,17 @@ export default function DownloadPage() {
                 : "Android : APK signé depuis notre site. iPhone : la même app via TestFlight / App Store bientôt."}
             </p>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              {isAr ? "الإصدار" : "Version"} {APP_VERSION} ·{" "}
+              {isAr ? "الإصدار" : "Version"} {android?.version || "—"} ·{" "}
               <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">tn.amenallah.education</code>
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <Button asChild size="lg" className="rounded-full px-8 gap-2">
-              <a href={APK_HREF} download>
+            <Button asChild={Boolean(android)} size="lg" className="rounded-full px-8 gap-2" disabled={!android}>
+              {android ? <a href={android.url} download>
                 <Download className="h-5 w-5" />
                 {isAr ? "تحميل لأندرويد (APK)" : "Télécharger Android (APK)"}
-              </a>
+              </a> : <span><Download className="h-5 w-5 inline mr-2" />{isAr ? "الإصدار غير متاح بعد" : "Version non disponible"}</span>}
             </Button>
             <Button asChild variant="outline" size="lg" className="rounded-full px-8">
               <Link href="/login">{isAr ? "الدخول عبر الويب" : "Connexion web"}</Link>
@@ -104,15 +120,8 @@ export default function DownloadPage() {
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
             {isAr ? "الحالة: قريباً (TestFlight / App Store)." : "Statut : bientôt (TestFlight / App Store)."}
           </p>
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            className="mt-4 rounded-full px-6"
-            disabled
-            aria-disabled
-          >
-            {isAr ? "TestFlight — قريباً" : "TestFlight — bientôt"}
+          <Button asChild={Boolean(ios?.appStoreUrl)} type="button" variant="secondary" size="lg" className="mt-4 rounded-full px-6" disabled={!ios?.appStoreUrl}>
+            {ios?.appStoreUrl ? <a href={ios.appStoreUrl}>{isAr ? "فتح TestFlight / App Store" : "Ouvrir TestFlight / App Store"}</a> : <span>{isAr ? "TestFlight — قريباً" : "TestFlight — bientôt"}</span>}
           </Button>
         </section>
 
@@ -135,6 +144,9 @@ export default function DownloadPage() {
                 ? "يفتح صفحة التحميل (وليس ملف APK مباشرة)."
                 : "Ouvre la page de téléchargement (pas le fichier APK brut)."}
             </p>
+            {android?.checksumSha256 && (
+              <p className="text-[10px] text-muted-foreground break-all text-center">SHA-256: {android.checksumSha256}</p>
+            )}
           </div>
 
           <div className="rounded-2xl border dark:border-slate-700/60 bg-white dark:bg-slate-900/70 p-6 shadow-sm text-start space-y-3">

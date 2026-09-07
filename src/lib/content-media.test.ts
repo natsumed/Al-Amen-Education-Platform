@@ -31,7 +31,7 @@ describe("content-media", () => {
 
   it("keeps media when access granted", () => {
     const content = { youtubeUrl: "https://youtube.com/x", pdfUrl: null, gifUrl: null }
-    expect(sanitizeContentForAccess(content, true).youtubeUrl).toBe("https://youtube.com/x")
+    expect(sanitizeContentForAccess(content, true).youtubeUrl).toBeNull()
   })
 
   it("stripMediaForList removes paywalled fields", () => {
