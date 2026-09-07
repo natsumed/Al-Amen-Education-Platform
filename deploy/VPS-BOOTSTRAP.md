@@ -45,6 +45,12 @@ chmod 750 /opt/amenallah/*.sh
 
 Copy `runtime.env.example` to `/opt/amenallah/runtime.env`, replace every placeholder with a newly generated value, and set `IMAGE_NAME` to the repository’s lowercase GHCR image name. Keep the file mode at `600`. The deploy account should invoke release scripts through `sudo -n`; it does not need direct read access to this file.
 
+For an existing pre-security installation, run
+`sudo /opt/amenallah/migrate-runtime-env.sh` once before the first updated
+Compose deployment. It preserves existing values, generates the new local
+encryption keys, and keeps protected content, attestation, AI, and ClicToPay
+disabled until their external credentials and acceptance tests are complete.
+
 Create `/opt/amenallah/restic.env` with the Restic repository password and S3-compatible backend variables, also mode `600`. Initialize the repository once, then test `backup.sh` and `restic snapshots`.
 
 Install the backup timer:
