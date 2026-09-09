@@ -20,6 +20,7 @@ model User {
   avatarUrl          String?
   googleId           String?   @unique
   emailVerified      DateTime?
+  onboardingCompletedAt DateTime?
   resetToken         String?
   resetTokenExp      DateTime?
   isBanned           Boolean   @default(false)
@@ -48,6 +49,10 @@ model User {
   reviewedIngestionJobs  IngestionJob[]        @relation("IngestionReviewedBy")
   auditEvents            AuditEvent[]
   mfaCredential          MfaCredential?
+  externalAccounts       ExternalAccount[]
+  authChallenges         AuthChallenge[]
+  oneTimeTokens          OneTimeToken[]
+  emailOutbox            EmailOutbox[]
 }
 
 model DeviceToken {
@@ -347,17 +352,96 @@ model AuditEvent {
 model MobileRelease {
   id             String    @id @default(uuid())
   platform       String
+  artifactType   String    @default("APK")
   version        String
   buildNumber    Int
   url            String
   checksumSha256 String?
+  signatureSha256 String?
   sizeBytes      BigInt?
   minimumVersion String?
+  minimumBuildNumber Int?
   appStoreUrl    String?
+  isMandatory    Boolean   @default(false)
   isPublished    Boolean   @default(false)
   releasedAt     DateTime?
+  publishedAt    DateTime?
   createdAt      DateTime  @default(now())
 
   @@unique([platform, buildNumber])
   @@index([platform, isPublished, buildNumber])
+}
+
+model ExternalAccount {
+  id                String   @id @default(uuid())
+  provider          String
+  providerAccountId String
+  userId            String
+  emailAtLink       String?
+  revokedAt         DateTime?
+  createdAt         DateTime @default(now())
+  lastLoginAt       DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+model AuthChallenge {
+  id          String   @id @default(uuid())
+  userId      String?
+  type        String
+  provider    String?
+  payload     Json?
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, expiresAt])
+  @@index([expiresAt])
+}
+
+model OneTimeToken {
+  id         String   @id @default(uuid())
+  userId     String
+  purpose    String
+  tokenHash  String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([purpose, tokenHash])
+  @@index([userId, purpose, expiresAt])
+}
+
+model EmailOutbox {
+  id              String    @id @default(uuid())
+  userId          String?
+  type            String
+  recipient       String
+  locale          String    @default("fr")
+  payloadEncrypted String?
+  templateVersion String    @default("v1")
+  idempotencyKey  String    @unique
+  status          String    @default("PENDING")
+  attempts        Int       @default(0)
+  nextAttemptAt   DateTime  @default(now())
+  providerMessageId String?
+  sentAt          DateTime?
+  expiresAt       DateTime?
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt])
+  @@index([recipient, createdAt])
 }

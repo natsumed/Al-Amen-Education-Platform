@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate QR PNG pointing to the Amenallah Android download page (not the raw APK).
+ * Generate QR PNG pointing to the platform-aware Amenallah installer route.
  * Usage:
  *   NEXT_PUBLIC_APP_URL=https://example.tn node scripts/generate-download-qr.mjs
  *   node scripts/generate-download-qr.mjs --url https://example.tn/download
@@ -16,7 +16,7 @@ const args = process.argv.slice(2)
 const urlIdx = args.indexOf("--url")
 const outIdx = args.indexOf("--out")
 const base = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "")
-const url = urlIdx >= 0 && args[urlIdx + 1] ? args[urlIdx + 1] : `${base}/download`
+const url = urlIdx >= 0 && args[urlIdx + 1] ? args[urlIdx + 1] : `${base}/app`
 const out =
   outIdx >= 0 && args[outIdx + 1]
     ? args[outIdx + 1]

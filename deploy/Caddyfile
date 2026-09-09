@@ -8,6 +8,7 @@
     root * /srv/amenallah/releases
     header Cache-Control "public, max-age=31536000, immutable"
     header Content-Disposition "attachment"
+    header Content-Type "application/vnd.android.package-archive"
     file_server
   }
   handle {

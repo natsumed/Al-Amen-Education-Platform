@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
     if (!user?.passwordHash || user.isBanned || !(await verifyPassword(user.passwordHash, password))) {
       return NextResponse.json({ error: "Identifiants incorrects" }, { status: 401 })
     }
+    if (!user.emailVerified) {
+      return NextResponse.json({ error: "Confirmez votre adresse email avant de vous connecter", code: "EMAIL_NOT_VERIFIED" }, { status: 403 })
+    }
 
     const mfaEnabled = Boolean(user.mfaCredential?.enabledAt)
     if (["ADMIN", "TEACHER"].includes(user.role) && !mfaEnabled) {

@@ -30,6 +30,7 @@ services:
       DATA_ENCRYPTION_KEY: ${PROD_DATA_ENCRYPTION_KEY:?PROD_DATA_ENCRYPTION_KEY is required}
       AUDIT_HASH_KEY: ${PROD_AUDIT_HASH_KEY:?PROD_AUDIT_HASH_KEY is required}
       ALLOW_LEGACY_MEDIA: ${PROD_ALLOW_LEGACY_MEDIA:-true}
+      MOBILE_NATIVE_CONTENT_ONLY: ${PROD_MOBILE_NATIVE_CONTENT_ONLY:-false}
       SECURE_CONTENT_ENABLED: ${PROD_SECURE_CONTENT_ENABLED:-false}
       VDOCIPHER_API_SECRET: ${VDOCIPHER_API_SECRET:-}
       MOBILE_ATTESTATION_ENFORCED: ${MOBILE_ATTESTATION_ENFORCED:-false}
@@ -46,8 +47,14 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
       GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-}
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+      SMTP_HOST: ${SMTP_HOST:-mail.spacemail.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: "${SMTP_FROM:-Amenallah Edition <support@amanallahedition.com>}"
+      SMTP_REPLY_TO: ${SMTP_REPLY_TO:-support@amanallahedition.com}
+      EMAIL_WORKER_ENABLED: ${EMAIL_WORKER_ENABLED:-true}
     depends_on:
       prod-db:
         condition: service_healthy
@@ -58,6 +65,26 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+
+  prod-email-worker:
+    image: ${IMAGE_NAME:?IMAGE_NAME is required}:${PROD_IMAGE_TAG:?PROD_IMAGE_TAG is required}
+    restart: unless-stopped
+    command: ["node", "scripts/email-worker.mjs"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://platform:${PROD_POSTGRES_PASSWORD}@prod-db:5432/platform?schema=public
+      DATA_ENCRYPTION_KEY: ${PROD_DATA_ENCRYPTION_KEY:?PROD_DATA_ENCRYPTION_KEY is required}
+      SMTP_HOST: ${SMTP_HOST:-mail.spacemail.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: "${SMTP_FROM:-Amenallah Edition <support@amanallahedition.com>}"
+      SMTP_REPLY_TO: ${SMTP_REPLY_TO:-support@amanallahedition.com}
+      EMAIL_WORKER_ENABLED: ${EMAIL_WORKER_ENABLED:-true}
+    depends_on:
+      prod-db:
+        condition: service_healthy
 
   prod-valkey:
     image: valkey/valkey:8-alpine
@@ -100,6 +127,7 @@ services:
       DATA_ENCRYPTION_KEY: ${STAGING_DATA_ENCRYPTION_KEY:?STAGING_DATA_ENCRYPTION_KEY is required}
       AUDIT_HASH_KEY: ${STAGING_AUDIT_HASH_KEY:?STAGING_AUDIT_HASH_KEY is required}
       ALLOW_LEGACY_MEDIA: ${STAGING_ALLOW_LEGACY_MEDIA:-true}
+      MOBILE_NATIVE_CONTENT_ONLY: ${STAGING_MOBILE_NATIVE_CONTENT_ONLY:-false}
       SECURE_CONTENT_ENABLED: ${STAGING_SECURE_CONTENT_ENABLED:-false}
       VDOCIPHER_API_SECRET: ${VDOCIPHER_API_SECRET:-}
       MOBILE_ATTESTATION_ENFORCED: ${MOBILE_ATTESTATION_ENFORCED:-false}
@@ -116,8 +144,14 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
       GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-}
-      RESEND_API_KEY: ""
-      RESEND_FROM_EMAIL: ""
+      SMTP_HOST: ${SMTP_HOST:-mail.spacemail.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: "${SMTP_FROM:-Amenallah Edition <support@amanallahedition.com>}"
+      SMTP_REPLY_TO: ${SMTP_REPLY_TO:-support@amanallahedition.com}
+      EMAIL_WORKER_ENABLED: ${EMAIL_WORKER_ENABLED:-true}
     depends_on:
       staging-db:
         condition: service_healthy
@@ -128,6 +162,26 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+
+  staging-email-worker:
+    image: ${IMAGE_NAME:?IMAGE_NAME is required}:${STAGING_IMAGE_TAG:?STAGING_IMAGE_TAG is required}
+    restart: unless-stopped
+    command: ["node", "scripts/email-worker.mjs"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://platform:${STAGING_POSTGRES_PASSWORD}@staging-db:5432/platform?schema=public
+      DATA_ENCRYPTION_KEY: ${STAGING_DATA_ENCRYPTION_KEY:?STAGING_DATA_ENCRYPTION_KEY is required}
+      SMTP_HOST: ${SMTP_HOST:-mail.spacemail.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: "${SMTP_FROM:-Amenallah Edition <support@amanallahedition.com>}"
+      SMTP_REPLY_TO: ${SMTP_REPLY_TO:-support@amanallahedition.com}
+      EMAIL_WORKER_ENABLED: ${EMAIL_WORKER_ENABLED:-true}
+    depends_on:
+      staging-db:
+        condition: service_healthy
 
   staging-valkey:
     image: valkey/valkey:8-alpine

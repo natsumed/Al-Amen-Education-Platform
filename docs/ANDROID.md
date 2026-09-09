@@ -33,7 +33,7 @@ Package: `tn.amenallah.education`. Roles: Student/Teacher learner tabs; Parent; 
 
 1. Install EAS CLI and log in: `npm i -g eas-cli && eas login`
 2. In `mobile/`: `eas init` once (writes real `extra.eas.projectId` into `app.json`)
-3. Set the production/staging API URL in `mobile/eas.json` (`preview` / `production` → `EXPO_PUBLIC_API_URL`). Must be a real `https://…` reachable from phones — never leave `REPLACE_WITH_YOUR_API_HOST`.
+3. The release profiles in `mobile/eas.json` use `https://amanallahedition.com` for `EXPO_PUBLIC_API_URL`. Keep any development override local only.
 4. Build:
 
    ```bash

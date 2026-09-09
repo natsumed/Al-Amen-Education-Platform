@@ -1,16 +1,19 @@
 # Android APK hosting (sideload pilot)
 
-Place the standalone APK here after each EAS preview build:
+Place the signed standalone APK here after each approved EAS direct build:
 
 ```bash
 # From repo root — after downloading the EAS artifact
 ./scripts/publish-mobile-apk.sh ~/Downloads/amenallah-*.apk
 ```
 
-Expected file (served by Next.js):
+Expected persistent server path:
 
-- `/downloads/amenallah-latest.apk` → `public/downloads/amenallah-latest.apk`
+- `/downloads/android/{version}/{build}/amenallah.apk`
 
-The download page is `/download`. QR codes must encode that page URL, not Expo Go / `exp://`.
+The download page is `/download`. The QR code and mobile smart link use `/app`,
+which redirects Android phones to the current APK and iOS devices to the
+published TestFlight/App Store URL. Never serve AABs, IPA files, keystores, or
+EAS credentials from this directory.
 
 The `.apk` itself is gitignored (large binary). Commit this README only.

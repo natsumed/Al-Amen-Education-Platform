@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { canAccessContent } from "@/lib/access-control"
 import { getRequestUser } from "@/lib/request-auth"
 import { signDocumentGrant } from "@/lib/document-access"
+import { hasNativeContentSession } from "@/lib/native-content"
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (process.env.SECURE_CONTENT_ENABLED !== "true") {
@@ -10,6 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
   const user = await getRequestUser(req)
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!(await hasNativeContentSession(req, user))) return NextResponse.json({ error: "Protected content requires the Amenallah app", code: "NATIVE_APP_REQUIRED" }, { status: 403 })
   const { id } = await params
   const requestedPage = Math.max(1, Number(new URL(req.url).searchParams.get("page") || 1))
   const content = await prisma.content.findFirst({

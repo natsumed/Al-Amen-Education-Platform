@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // is resolved through the authenticated media endpoint below.
     const safe = sanitizeContentForAccess(content, Boolean(user) && access.canAccess)
 
-    return NextResponse.json({ ...safe, access, mediaLocked: !user || !access.canAccess })
+    return NextResponse.json({ ...safe, access, mediaLocked: !user || !access.canAccess, deliveryMode: process.env.MOBILE_NATIVE_CONTENT_ONLY === "true" ? "NATIVE_APP" : "MIGRATION" })
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })
   }

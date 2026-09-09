@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Lock, Play, BookOpen, ArrowLeft, Star, Clock, Eye, Globe, FileText, Film, Zap, Share2, LogOut, User } from "lucide-react"
+import { Lock, Play, BookOpen, ArrowLeft, Star, Clock, Eye, Globe, FileText, Film, Zap, Share2, LogOut, User, Smartphone } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import { contentTypeLabel, gradeLabel, getYouTubeId } from "@/lib/utils"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -44,6 +44,7 @@ export default function ContentDetailPage() {
   const initials = user?.name?.split(" ")?.map((n: string) => n[0])?.join("")?.toUpperCase() || "U"
   const dashboardUrl = user ? `/${user.role?.toLowerCase()}` : "/login"
   const [content, setContent] = useState<any>(null)
+  const [nativeOnly, setNativeOnly] = useState(false)
   const [media, setMedia] = useState<{ youtubeUrl?: string | null; pdfUrl?: string | null; gifUrl?: string | null } | null>(null)
   const [protectedPlayback, setProtectedPlayback] = useState<{ otp: string; playbackInfo: string; sessionCode: string } | null>(null)
   const [documentManifest, setDocumentManifest] = useState<{ pageCount: number; currentPage: number; pages: Array<{ page: number; url: string }> } | null>(null)
@@ -59,13 +60,14 @@ export default function ContentDetailPage() {
       .then(r => r.json())
       .then(async (d) => {
         setContent(d)
+        setNativeOnly(d.deliveryMode === "NATIVE_APP")
         setLoading(false)
         if (d.id) {
           fetch(`/api/reviews?contentId=${d.id}`).then(r => r.json()).then(data => setReviews(data.reviews || []))
           fetch(`/api/content?grade=${d.grade}&subject=${d.subject}&limit=4`).then(r => r.json()).then(data => {
             setRelatedContent((data.items || []).filter((c: any) => c.id !== d.id).slice(0, 3))
           })
-          if (d.access?.canAccess) {
+          if (d.access?.canAccess && d.deliveryMode !== "NATIVE_APP") {
             try {
               const playbackRes = await fetch(`/api/content/${d.id}/playback`, {
                 method: "POST",
@@ -142,9 +144,9 @@ export default function ContentDetailPage() {
   const canAccess = Boolean(content.access?.canAccess)
   // Media is only populated by the authenticated, access-controlled endpoint.
   // Do not fall back to URLs from the public detail response.
-  const videoUrl = media?.youtubeUrl || null
-  const pdfUrl = media?.pdfUrl || null
-  const gifUrl = media?.gifUrl || null
+  const videoUrl = nativeOnly ? null : media?.youtubeUrl || null
+  const pdfUrl = nativeOnly ? null : media?.pdfUrl || null
+  const gifUrl = nativeOnly ? null : media?.gifUrl || null
   const ytId = videoUrl ? getYouTubeId(videoUrl) : null
   const isDriveVideo = Boolean(videoUrl && videoUrl.includes("drive.google.com"))
   const TypeIcon = TYPE_ICONS[content.contentType] || Film
@@ -276,8 +278,19 @@ export default function ContentDetailPage() {
               </Card>
             )}
 
+            {nativeOnly && (
+              <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-primary/10 to-background">
+                <CardContent className="p-8 text-center space-y-4">
+                  <Smartphone className="h-12 w-12 text-primary mx-auto" />
+                  <h2 className="text-xl font-semibold">{isAr ? "افتح هذا الدرس في تطبيق أمان الله" : "Ouvrez cette leçon dans l’application Amenallah"}</h2>
+                  <p className="text-sm text-muted-foreground">{isAr ? "المحتوى المحمي متاح فقط داخل التطبيق الرسمي مع حماية الجهاز." : "Les leçons protégées sont disponibles uniquement dans l’application officielle, avec une protection native de l’appareil."}</p>
+                  <Button asChild><Link href="/app">{isAr ? "تحميل التطبيق" : "Ouvrir l’application"}</Link></Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Protected player, with the legacy embed retained only during migration. */}
-            {(protectedPlayback || ytId || isDriveVideo) && (canAccess ? (
+            {!nativeOnly && (protectedPlayback || ytId || isDriveVideo) && (canAccess ? (
               <Card className="overflow-hidden border-0 shadow-lg">
                 <div className="relative aspect-video bg-black">
                   {protectedPlayback ? (
@@ -335,7 +348,7 @@ export default function ContentDetailPage() {
               </Card>
             ))}
 
-            {documentManifest && canAccess && (
+            {!nativeOnly && documentManifest && canAccess && (
               <Card className="border-0 shadow-sm overflow-hidden">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />{isAr ? "قارئ محمي" : "Lecteur protégé"}</CardTitle>
@@ -354,7 +367,7 @@ export default function ContentDetailPage() {
             )}
 
             {/* Transitional legacy PDF section; disabled with SECURE_CONTENT_ENABLED. */}
-            {pdfUrl && canAccess && (
+            {!nativeOnly && pdfUrl && canAccess && (
               <Card className="border-0 shadow-sm">
                 <CardContent className="p-5 space-y-4">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -381,7 +394,7 @@ export default function ContentDetailPage() {
             )}
 
             {/* GIF/Animation Section */}
-            {gifUrl && canAccess && (
+            {!nativeOnly && gifUrl && canAccess && (
               <Card className="overflow-hidden border-0 shadow-sm">
                 <CardContent className="p-0">
                   <div className="p-4 border-b">

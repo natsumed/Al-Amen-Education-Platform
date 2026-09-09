@@ -4,6 +4,7 @@ import { getContentAccessInfo } from "@/lib/access-control"
 import { getRequestUser } from "@/lib/request-auth"
 import { normalizeExternalMediaUrl, parseFileUrls } from "@/lib/content-media"
 import { getSignedUrl } from "@/lib/storage"
+import { nativeContentOnly } from "@/lib/native-content"
 
 async function resolveMediaUrl(value: string | null | undefined): Promise<string | null> {
   if (!value) return null
@@ -21,6 +22,9 @@ async function resolveMediaUrl(value: string | null | undefined): Promise<string
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (nativeContentOnly()) {
+      return NextResponse.json({ error: "Protected content requires the Amenallah app", code: "NATIVE_APP_REQUIRED" }, { status: 403, headers: { "Cache-Control": "private, no-store" } })
+    }
     if (process.env.SECURE_CONTENT_ENABLED === "true") {
       return NextResponse.json(
         {

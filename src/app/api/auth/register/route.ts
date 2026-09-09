@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { registerSchema } from "@/lib/validations"
-import { sendWelcomeEmail } from "@/lib/email"
+import { sendVerificationEmail } from "@/lib/email"
 import { registerLimiter } from "@/lib/rate-limit"
 import { generatePublicId, resolveUserByIdentifier } from "@/lib/user-id"
+import crypto from "crypto"
+import { hashOpaqueToken } from "@/lib/security-crypto"
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +20,8 @@ export async function POST(req: NextRequest) {
     const parsed = registerSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-    const { fullName, email, password, phone, role, studentPublicId } = parsed.data
+    const { fullName, password, phone, role, studentPublicId } = parsed.data
+    const email = parsed.data.email.trim().toLowerCase()
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) return NextResponse.json({ error: "Un compte avec cet email existe déjà" }, { status: 409 })
@@ -64,14 +67,29 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    sendWelcomeEmail(email, fullName).catch(console.error)
+    const verificationToken = crypto.randomBytes(32).toString("hex")
+    await prisma.$transaction(async (tx) => {
+      await tx.oneTimeToken.updateMany({
+        where: { userId: user.id, purpose: "EMAIL_VERIFY", consumedAt: null, revokedAt: null },
+        data: { revokedAt: new Date() },
+      })
+      await tx.oneTimeToken.create({
+        data: {
+          userId: user.id,
+          purpose: "EMAIL_VERIFY",
+          tokenHash: hashOpaqueToken(verificationToken),
+          expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+        },
+      })
+    })
+    await sendVerificationEmail(email, fullName, verificationToken, user.id)
 
     await registerLimiter.reset(ip)
     return NextResponse.json(
       {
         message: linkPending
-          ? "Compte créé — invitation envoyée à l'élève (en attente d'acceptation)"
-          : "Compte créé avec succès",
+        ? "Compte créé — confirmez votre email; l'invitation est en attente d'acceptation"
+          : "Compte créé — confirmez votre adresse email pour vous connecter",
         userId: user.id,
         publicId: user.publicId,
         linkPending,

@@ -29,7 +29,7 @@ CI uses an ephemeral PostgreSQL service and dummy env only. No real secrets.
 - `AUTH_SECRET`
 - `DATABASE_URL` (Postgres)
 - `GEMINI_API_KEY` (optional chatbot)
-- `RESEND_API_KEY` / `RESEND_FROM_EMAIL` (optional)
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_REPLY_TO`, and `EMAIL_WORKER_ENABLED` (protected Spacemail secrets)
 - Payment keys when Konnect/Flouci go live
 
 ### Recommended GitHub settings

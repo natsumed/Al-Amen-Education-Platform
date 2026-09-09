@@ -1,0 +1,91 @@
+name: Mobile release
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Build platform
+        required: true
+        type: choice
+        options: [android-direct, android-store, ios-testflight]
+      publish_android:
+        description: Publish the Android APK manifest after approval
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci --audit=false
+      - run: npx tsc --noEmit
+      - run: npx expo-doctor
+      - run: npm audit --audit-level=critical
+
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: mobile-release
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci --audit=false
+      - name: Build signed artifact
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
+        run: npx eas build --platform ${{ startsWith(inputs.platform, 'android') && 'android' || 'ios' }} --profile ${{ inputs.platform }} --non-interactive --wait
+      - name: Download latest Android APK
+        if: startsWith(inputs.platform, 'android-direct')
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas build:download --platform android --profile android-direct --latest --path ./dist/amenallah.apk
+      - name: Verify Android artifact
+        if: startsWith(inputs.platform, 'android-direct')
+        run: |
+          mkdir -p dist
+          sha256sum dist/amenallah.apk | tee dist/amenallah.apk.sha256
+          if command -v apksigner >/dev/null 2>&1; then apksigner verify --verbose dist/amenallah.apk; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-${{ inputs.platform }}-${{ github.sha }}
+          path: mobile/dist
+          if-no-files-found: ignore
+
+  publish:
+    if: inputs.publish_android && inputs.platform == 'android-direct'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production-mobile
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mobile-${{ inputs.platform }}-${{ github.sha }}
+          path: dist
+      - name: Refuse an unapproved or incomplete publication
+        run: |
+          test -s dist/amenallah.apk
+          test -s dist/amenallah.apk.sha256
+          echo "Artifact verified for commit $GITHUB_SHA. Server publication is intentionally a protected follow-up step."

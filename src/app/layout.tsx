@@ -6,6 +6,7 @@ import { LanguageProvider } from "@/providers/language-provider"
 import { ThemeProvider } from "@/providers/theme-provider"
 import { Toaster } from "sonner"
 import { connection } from "next/server"
+import { MobileAppBanner } from "@/components/mobile-app-banner"
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -46,6 +47,7 @@ export default async function RootLayout({
           <SessionProvider>
             <LanguageProvider>
               {children}
+              <MobileAppBanner />
               <Toaster richColors position="top-right" />
             </LanguageProvider>
           </SessionProvider>

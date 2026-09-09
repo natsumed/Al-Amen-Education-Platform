@@ -35,7 +35,7 @@ iOS App Transport Security blocks arbitrary cleartext HTTP. EAS `preview` / `pro
 EXPO_PUBLIC_API_URL=https://YOUR_PUBLIC_HOST
 ```
 
-in [`mobile/eas.json`](../mobile/eas.json). Replace `REPLACE_WITH_YOUR_API_HOST` before shipping. Builds left on the placeholder are not usable for real users.
+in [`mobile/eas.json`](../mobile/eas.json). Release profiles already point at `https://amanallahedition.com`; provider signing and store identifiers remain protected release secrets.
 
 Android USB/emulator may still use HTTP locally (`adb reverse`, `10.0.2.2`) — that path does not apply to iOS.
 

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getRequestUser } from "@/lib/request-auth"
 import { verifyDocumentGrant } from "@/lib/document-access"
 import { downloadPrivateBuffer } from "@/lib/storage"
+import { hasNativeContentSession } from "@/lib/native-content"
 
 function escapeXml(value: string) {
   return value.replace(/[<>&"']/g, (char) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" }[char] || char))
@@ -12,6 +13,7 @@ function escapeXml(value: string) {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string; page: string }> }) {
   const user = await getRequestUser(req)
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!(await hasNativeContentSession(req, user))) return NextResponse.json({ error: "Protected content requires the Amenallah app", code: "NATIVE_APP_REQUIRED" }, { status: 403 })
   const { id, page: pageParam } = await params
   const page = Number(pageParam)
   const token = new URL(req.url).searchParams.get("token") || ""

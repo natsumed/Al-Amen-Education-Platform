@@ -16,7 +16,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "tn.amenallah.education",
       "buildNumber": "1",
-      "usesAppleSignIn": false,
+      "usesAppleSignIn": true,
+      "associatedDomains": ["applinks:amanallahedition.com"],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Amenallah utilise votre photo uniquement pour votre avatar.",
         "NSCameraUsageDescription": "Amenallah utilise la caméra uniquement pour votre avatar.",
@@ -42,6 +43,11 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
+      ,"intentFilters": [
+        { "action": "VIEW", "autoVerify": true, "category": ["BROWSABLE", "DEFAULT"], "data": [{ "scheme": "https", "host": "amanallahedition.com", "pathPrefix": "/content" }] },
+        { "action": "VIEW", "autoVerify": true, "category": ["BROWSABLE", "DEFAULT"], "data": [{ "scheme": "https", "host": "amanallahedition.com", "pathPrefix": "/reset-password" }] },
+        { "action": "VIEW", "autoVerify": true, "category": ["BROWSABLE", "DEFAULT"], "data": [{ "scheme": "https", "host": "amanallahedition.com", "pathPrefix": "/verify-email" }] }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -55,6 +61,7 @@
         }
       ],
       "expo-notifications",
+      "expo-apple-authentication",
       "expo-secure-store",
       "./plugins/with-secure-content.js",
       [

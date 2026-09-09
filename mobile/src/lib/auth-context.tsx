@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import * as SecureStore from "expo-secure-store"
 import * as Device from "expo-device"
 import { Platform } from "react-native"
+import Constants from "expo-constants"
 import { api, setApiBaseUrlOverride, setAuthRefreshHandler, type MobileUser } from "./api"
 import { flushProgressQueue } from "./offline-queue"
 import { registerPushToken, unregisterPushToken } from "./notifications"
@@ -21,9 +22,12 @@ type AuthContextValue = {
   language: "fr" | "ar"
   setLanguage: (lang: "fr" | "ar") => void
   login: (email: string, password: string, totpCode?: string) => Promise<void>
+  loginWithGoogle: (idToken: string, totpCode?: string) => Promise<void>
+  loginWithApple: (identityToken: string, totpCode?: string) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
   updateUser: (user: MobileUser) => void
+  updateRequired: boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -33,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [language, setLanguage] = useState<"fr" | "ar">("fr")
+  const [updateRequired, setUpdateRequired] = useState(false)
 
   const clearCredentials = useCallback(async () => {
     await Promise.all([
@@ -69,6 +74,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     ;(async () => {
       try {
+        const platform = Platform.OS === "ios" ? "IOS" : "ANDROID"
+        const build = Number((Constants.expoConfig?.android as { versionCode?: number } | undefined)?.versionCode || (Constants.expoConfig?.ios as { buildNumber?: string } | undefined)?.buildNumber || 1)
+        try {
+          const current = await api.currentRelease(platform, build)
+          if (current.updateRequired) setUpdateRequired(true)
+        } catch {
+          // A release API outage must not erase an otherwise valid session.
+        }
         const [stored, savedLanguage, apiOverride] = await Promise.all([
           SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
           AsyncStorage.getItem(LANGUAGE_KEY),
@@ -128,6 +141,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void registerPushToken(res.accessToken).catch(() => {})
   }, [])
 
+  const socialLogin = useCallback(async (kind: "google" | "apple", credential: string, totpCode?: string) => {
+    let deviceId = await SecureStore.getItemAsync(DEVICE_ID_KEY)
+    if (!deviceId) {
+      deviceId = `amen-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`
+      await SecureStore.setItemAsync(DEVICE_ID_KEY, deviceId)
+    }
+    const device = { deviceId, platform: Platform.OS, deviceName: Device.modelName || undefined }
+    const res = kind === "google" ? await api.loginWithGoogle(credential, device, totpCode) : await api.loginWithApple(credential, device, totpCode)
+    if (!res?.accessToken || !res?.refreshToken || !res?.user) throw new Error("Réponse de connexion invalide")
+    await Promise.all([SecureStore.setItemAsync(ACCESS_TOKEN_KEY, res.accessToken), SecureStore.setItemAsync(REFRESH_TOKEN_KEY, res.refreshToken)])
+    setToken(res.accessToken)
+    setUser(res.user)
+    void flushProgressQueue(res.accessToken).catch(() => {})
+    void registerPushToken(res.accessToken).catch(() => {})
+  }, [])
+  const loginWithGoogle = useCallback((idToken: string, totpCode?: string) => socialLogin("google", idToken, totpCode), [socialLogin])
+  const loginWithApple = useCallback((identityToken: string, totpCode?: string) => socialLogin("apple", identityToken, totpCode), [socialLogin])
+
   const logout = useCallback(async () => {
     if (token) {
       await Promise.allSettled([unregisterPushToken(token), api.logout(token)])
@@ -183,11 +214,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       language,
       setLanguage: changeLanguage,
       login,
+      loginWithGoogle,
+      loginWithApple,
       logout,
       refreshUser,
       updateUser,
+      updateRequired,
     }),
-    [user, token, loading, language, changeLanguage, login, logout, refreshUser, updateUser]
+    [user, token, loading, language, changeLanguage, login, loginWithGoogle, loginWithApple, logout, refreshUser, updateUser, updateRequired]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

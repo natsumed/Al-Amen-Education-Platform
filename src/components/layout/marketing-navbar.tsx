@@ -33,6 +33,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ModeToggle } from "@/components/mode-toggle"
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Menu } from "lucide-react"
 
 type Props = {
   solid?: boolean
@@ -120,7 +122,7 @@ export function MarketingNavbar({ solid }: Props) {
   return (
     <nav
       className={cn(
-        "sticky top-0 z-50 border-b",
+        "sticky top-0 z-50 border-b pt-[env(safe-area-inset-top)]",
         solid ? "bg-background/95 backdrop-blur-xl" : "bg-background/90 backdrop-blur-xl shadow-sm"
       )}
       dir={isAr ? "rtl" : "ltr"}
@@ -143,6 +145,47 @@ export function MarketingNavbar({ solid }: Props) {
               </span>
             </div>
           </Link>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="lg:hidden shrink-0" aria-label={isAr ? "فتح القائمة" : "Ouvrir le menu"}>
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side={isAr ? "right" : "left"} className="w-[min(88vw,360px)] pt-12" dir={isAr ? "rtl" : "ltr"}>
+              <SheetTitle>{isAr ? "قائمة أمان الله" : "Menu Amenallah"}</SheetTitle>
+              <div className="mt-6 flex flex-col gap-1">
+                {[
+                  ["/", isAr ? "الرئيسية" : "Accueil"],
+                  ["/content/browse", isAr ? "المحتوى" : "Contenu"],
+                  ["/pricing", isAr ? "الأسعار" : "Tarifs"],
+                  ["/download", isAr ? "تطبيق الهاتف" : "Application mobile"],
+                  ["/content/browse?sort=newest", isAr ? "آخر الإصدارات" : "Nouveautés"],
+                  ["/#about", isAr ? "من نحن" : "À propos"],
+                ].map(([href, label]) => (
+                  <SheetClose asChild key={href}>
+                    <Link href={href} className="rounded-lg px-4 py-3 text-sm font-medium hover:bg-accent">{label}</Link>
+                  </SheetClose>
+                ))}
+                <div className="my-3 border-t" />
+                {user ? (
+                  <>
+                    <SheetClose asChild><Link href={dashboardUrl} className="rounded-lg px-4 py-3 text-sm font-medium hover:bg-accent">{isAr ? "مساحتي" : "Mon espace"}</Link></SheetClose>
+                    <button type="button" className="rounded-lg px-4 py-3 text-start text-sm font-medium text-destructive hover:bg-destructive/10" onClick={() => signOut({ callbackUrl: "/" })}>{isAr ? "تسجيل الخروج" : "Se déconnecter"}</button>
+                  </>
+                ) : (
+                  <>
+                    <SheetClose asChild><Link href="/login" className="rounded-lg px-4 py-3 text-sm font-medium hover:bg-accent">{isAr ? "دخول" : "Connexion"}</Link></SheetClose>
+                    <SheetClose asChild><Link href="/register" className="rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground">{isAr ? "إنشاء حساب" : "S'inscrire"}</Link></SheetClose>
+                  </>
+                )}
+                <div className="mt-4 flex items-center gap-2 px-4">
+                  <ModeToggle />
+                  <Button variant="outline" size="sm" onClick={() => setLanguage(isAr ? "fr" : "ar")} className="gap-1.5"><Globe className="h-3.5 w-3.5" />{isAr ? "FR" : "عربي"}</Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
 
           <div className="hidden lg:flex items-center gap-0.5">
             <button

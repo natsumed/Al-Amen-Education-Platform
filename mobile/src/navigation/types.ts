@@ -34,6 +34,8 @@ export type RootStackParamList = {
   Login: undefined
   Register: undefined
   ForgotPassword: undefined
+  VerifyEmail: { token: string }
+  ResetPassword: { token: string }
   LearnerTabs: undefined
   ParentTabs: undefined
   AdminBlocked: undefined

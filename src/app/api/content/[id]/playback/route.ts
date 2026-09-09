@@ -5,6 +5,7 @@ import { getRequestUser } from "@/lib/request-auth"
 import { playbackLimiter } from "@/lib/rate-limit"
 import { generateOpaqueToken, hashNetworkIdentifier } from "@/lib/security-crypto"
 import { createVdoCipherPlayback } from "@/lib/vdocipher"
+import { hasNativeContentSession, nativeContentOnly } from "@/lib/native-content"
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (process.env.SECURE_CONTENT_ENABLED !== "true") {
@@ -13,6 +14,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const user = await getRequestUser(req)
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!(await hasNativeContentSession(req, user))) {
+    return NextResponse.json({ error: "Protected content requires the Amenallah app", code: "NATIVE_APP_REQUIRED" }, { status: 403, headers: { "Cache-Control": "private, no-store" } })
+  }
 
   const { id } = await params
   const limit = await playbackLimiter.check(user.id)
@@ -66,10 +70,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const sessionCode = generateOpaqueToken(9)
-  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000)
-  const body = await req.json().catch(() => ({}))
-  const client = body && body.client === "mobile" ? "mobile" : "web"
-  if (client === "mobile" && process.env.MOBILE_ATTESTATION_ENFORCED === "true") {
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
+  const client = req.headers.get("authorization")?.startsWith("Bearer ") ? "mobile" : "web"
+  if ((client === "mobile" && process.env.MOBILE_ATTESTATION_ENFORCED === "true") || nativeContentOnly()) {
     if (!user.deviceSessionId) return NextResponse.json({ error: "Device session required" }, { status: 403 })
     const trustedDevice = await prisma.deviceSession.findFirst({
       where: { id: user.deviceSessionId, userId: user.id, revokedAt: null, attestedAt: { not: null } },

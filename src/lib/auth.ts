@@ -43,6 +43,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!user || !user.passwordHash) return null
         if (user.isBanned) return null
+        if (!user.emailVerified) throw new Error("EMAIL_NOT_VERIFIED")
 
         const password = credentials.password as string
         const isValid = user.passwordHash.startsWith("$argon2")
@@ -81,12 +82,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
         try {
+          const verified = typeof profile === "object" && profile !== null &&
+            "email_verified" in profile && profile.email_verified === true
+          if (!verified || !user.email) return false
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email! },
-            include: { mfaCredential: true },
+            include: { mfaCredential: true, externalAccounts: true },
           })
 
           if (!existingUser) {
@@ -96,11 +100,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               data: {
                 email: user.email!,
                 fullName: user.name ?? "Google User",
-                googleId: account.providerAccountId,
                 avatarUrl: user.image,
                 emailVerified: new Date(),
                 role: "STUDENT",
                 publicId,
+              },
+            })
+            await prisma.externalAccount.create({
+              data: {
+                provider: "google",
+                providerAccountId: account.providerAccountId,
+                userId: created.id,
+                emailAtLink: user.email,
+                lastLoginAt: new Date(),
               },
             })
             Object.assign(user, {
@@ -115,12 +127,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // Privileged accounts must use the credential flow so the platform's
             // own MFA policy cannot be bypassed by an OAuth login.
             if (["ADMIN", "TEACHER"].includes(existingUser.role)) return false
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: {
-                googleId: account.providerAccountId,
-                avatarUrl: user.image ?? existingUser.avatarUrl,
-              },
+            await prisma.$transaction(async (tx) => {
+              await tx.user.update({
+                where: { id: existingUser.id },
+                data: { avatarUrl: user.image ?? existingUser.avatarUrl, emailVerified: existingUser.emailVerified ?? new Date() },
+              })
+              await tx.externalAccount.upsert({
+                where: { provider_providerAccountId: { provider: "google", providerAccountId: account.providerAccountId } },
+                update: { lastLoginAt: new Date(), emailAtLink: user.email, revokedAt: null },
+                create: { provider: "google", providerAccountId: account.providerAccountId, userId: existingUser.id, emailAtLink: user.email, lastLoginAt: new Date() },
+              })
             })
             Object.assign(user, {
               id: existingUser.id,

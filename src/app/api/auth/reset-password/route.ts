@@ -11,8 +11,12 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "Données invalides" }, { status: 400 })
 
     const { token, password } = parsed.data
-    const user = await prisma.user.findFirst({ where: { resetToken: hashOpaqueToken(token), resetTokenExp: { gt: new Date() } } })
-    if (!user) return NextResponse.json({ error: "Lien invalide ou expiré" }, { status: 400 })
+    const resetToken = await prisma.oneTimeToken.findFirst({
+      where: { purpose: "PASSWORD_RESET", tokenHash: hashOpaqueToken(token), consumedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+      include: { user: true },
+    })
+    const user = resetToken?.user
+    if (!user || !resetToken) return NextResponse.json({ error: "Lien invalide ou expiré" }, { status: 400 })
 
     const passwordHash = await hashArgon2(password)
     const now = new Date()
@@ -23,10 +27,9 @@ export async function POST(req: NextRequest) {
           passwordHash,
           passwordUpdatedAt: now,
           sessionVersion: { increment: 1 },
-          resetToken: null,
-          resetTokenExp: null,
         },
       })
+      await tx.oneTimeToken.update({ where: { id: resetToken.id }, data: { consumedAt: now } })
       const sessions = await tx.deviceSession.findMany({ where: { userId: user.id }, select: { id: true } })
       const ids = sessions.map((session) => session.id)
       await tx.deviceSession.updateMany({ where: { id: { in: ids } }, data: { revokedAt: now } })

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react"
 import * as SplashScreen from "expo-splash-screen"
+import * as ScreenCapture from "expo-screen-capture"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { AuthProvider } from "./src/lib/auth-context"
 import { ThemeProvider } from "./src/theme"
@@ -10,6 +11,9 @@ import { useAppFonts } from "./src/theme/fonts"
 SplashScreen.preventAutoHideAsync().catch(() => {})
 
 export default function App() {
+  // Global privacy baseline: protected windows stay non-capturable even
+  // before navigation reaches a lesson screen.
+  ScreenCapture.usePreventScreenCapture("amenallah-global")
   const fontsLoaded = useAppFonts()
   // Never block forever if font download fails (offline / flaky network).
   const [ready, setReady] = useState(false)
@@ -29,6 +33,11 @@ export default function App() {
     if (!ready) return
     void SplashScreen.hideAsync().catch(() => {})
   }, [ready])
+
+  useEffect(() => {
+    void ScreenCapture.enableAppSwitcherProtectionAsync(1)
+    return () => { void ScreenCapture.disableAppSwitcherProtectionAsync() }
+  }, [])
 
   if (!ready) return null
 

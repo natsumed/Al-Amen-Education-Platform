@@ -26,6 +26,8 @@ ensure_var PROD_AUDIT_HASH_KEY "$(openssl rand -base64 32 | tr -d '\n')"
 ensure_var STAGING_AUDIT_HASH_KEY "$(openssl rand -base64 32 | tr -d '\n')"
 ensure_var PROD_ALLOW_LEGACY_MEDIA true
 ensure_var STAGING_ALLOW_LEGACY_MEDIA true
+ensure_var PROD_MOBILE_NATIVE_CONTENT_ONLY false
+ensure_var STAGING_MOBILE_NATIVE_CONTENT_ONLY false
 ensure_var PROD_SECURE_CONTENT_ENABLED false
 ensure_var STAGING_SECURE_CONTENT_ENABLED false
 ensure_var VDOCIPHER_API_SECRET ""

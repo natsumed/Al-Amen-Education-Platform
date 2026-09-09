@@ -98,7 +98,7 @@ On every page, click the **FR / عربي** button:
 6. Enter a new password (min 8 characters)
 7. Try logging in with the new password — must work
 
-**Note:** Email sending via Resend is not configured. The token is logged to the terminal for local testing. In production, configure `RESEND_API_KEY` in `.env`.
+**Note:** Transactional email uses the private Spacemail SMTP transport and encrypted `EmailOutbox`; raw verification/reset tokens are never logged. Use a local SMTP sink for tests and configure the protected `SMTP_*` values only in runtime secret storage.
 
 ### 5.7 Logout
 1. Click the avatar top-right

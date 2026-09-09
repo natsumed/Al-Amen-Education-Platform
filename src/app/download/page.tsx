@@ -10,8 +10,8 @@ import { useEffect, useState } from "react"
 
 type ReleaseManifest = {
   ready: boolean
-  android: null | { version: string; url: string; checksumSha256?: string | null; sizeBytes?: string | null }
-  ios: null | { version: string; appStoreUrl?: string | null }
+  android: null | { version: string; buildNumber?: number; url: string; checksumSha256?: string | null; sizeBytes?: string | null; isMandatory?: boolean }
+  ios: null | { version: string; buildNumber?: number; appStoreUrl?: string | null; isMandatory?: boolean }
 }
 
 export default function DownloadPage() {
@@ -26,9 +26,8 @@ export default function DownloadPage() {
       .catch(() => setManifest({ ready: false, android: null, ios: null }))
   }, [])
 
-  const releaseReady = Boolean(manifest?.ready)
-  const android = releaseReady ? manifest?.android : null
-  const ios = releaseReady ? manifest?.ios : null
+  const android = manifest?.android || null
+  const ios = manifest?.ios || null
 
   const steps = isAr
     ? [
@@ -72,7 +71,7 @@ export default function DownloadPage() {
                 : "Android : APK signé depuis notre site. iPhone : la même app via TestFlight / App Store bientôt."}
             </p>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              {isAr ? "الإصدار" : "Version"} {android?.version || "—"} ·{" "}
+              {isAr ? "الإصدار" : "Version"} {android?.version || ios?.version || "—"} ·{" "}
               <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">tn.amenallah.education</code>
             </p>
           </div>
@@ -141,8 +140,8 @@ export default function DownloadPage() {
             />
             <p className="text-xs text-muted-foreground text-center">
               {isAr
-                ? "يفتح صفحة التحميل (وليس ملف APK مباشرة)."
-                : "Ouvre la page de téléchargement (pas le fichier APK brut)."}
+                ? "يفتح المسار الذكي: يبدأ تحميل أندرويد أو يفتح TestFlight على iPhone."
+                : "Ouvre le lien intelligent : téléchargement Android ou TestFlight sur iPhone."}
             </p>
             {android?.checksumSha256 && (
               <p className="text-[10px] text-muted-foreground break-all text-center">SHA-256: {android.checksumSha256}</p>

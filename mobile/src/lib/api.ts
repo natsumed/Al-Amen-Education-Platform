@@ -119,6 +119,14 @@ export type ProgressItem = {
   content: ContentItem
 }
 
+export type DocumentManifest = {
+  contentId: string
+  pageCount: number
+  currentPage: number
+  pages: Array<{ page: number; url: string }>
+  expiresIn: number
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { token?: string | null; _retried?: boolean } = {}
@@ -176,6 +184,16 @@ export const api = {
       body: JSON.stringify({ email, password, totpCode, ...device }),
     }),
 
+  loginWithGoogle: (idToken: string, device: { deviceId: string; platform: string; deviceName?: string }, totpCode?: string) =>
+    request<{ accessToken: string; token: string; refreshToken: string; expiresIn: number; user: MobileUser }>("/api/mobile/auth/google", {
+      method: "POST", body: JSON.stringify({ idToken, totpCode, ...device }),
+    }),
+
+  loginWithApple: (identityToken: string, device: { deviceId: string; platform: string; deviceName?: string }, totpCode?: string) =>
+    request<{ accessToken: string; token: string; refreshToken: string; expiresIn: number; user: MobileUser }>("/api/mobile/auth/apple", {
+      method: "POST", body: JSON.stringify({ identityToken, totpCode, ...device }),
+    }),
+
   refresh: (refreshToken: string) =>
     request<{ accessToken: string; token: string; refreshToken: string; expiresIn: number }>(
       "/api/mobile/auth/refresh",
@@ -209,6 +227,13 @@ export const api = {
       body: JSON.stringify({ email }),
     }),
 
+  verifyEmail: (token: string) => request<{ ok: boolean; message: string }>("/api/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
+
+  resetPassword: (token: string, password: string, confirmPassword: string) => request<{ message: string }>("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ token, password, confirmPassword }) }),
+
+  currentRelease: (platform: "ANDROID" | "IOS", build: number) =>
+    request<{ ready: boolean; updateRequired?: boolean; android: { minimumBuildNumber?: number | null; isMandatory?: boolean; updateRequired?: boolean; url: string; appStoreUrl?: string | null } | null; ios: { minimumBuildNumber?: number | null; isMandatory?: boolean; updateRequired?: boolean; url: string; appStoreUrl?: string | null } | null }>(`/api/mobile/releases/current?platform=${platform}&build=${build}`),
+
   listContent: (params: Record<string, string | number | undefined> = {}, token?: string | null) => {
     const q = new URLSearchParams()
     Object.entries(params).forEach(([k, v]) => {
@@ -227,22 +252,14 @@ export const api = {
       { token }
     ),
 
-  getMedia: (id: string, token: string) =>
-    request<{
-      media: {
-        youtubeUrl: string | null
-        pdfUrl: string | null
-        gifUrl: string | null
-        fileUrls: string[]
-      }
-      canDownload: boolean
-    }>(`/api/content/${id}/media`, { token }),
-
   getPlayback: (id: string, token: string) =>
     request<{ otp: string; playbackInfo: string; videoId: string; sessionCode: string; expiresIn: number }>(
       `/api/content/${id}/playback`,
       { method: "POST", token, body: JSON.stringify({ client: "mobile" }) }
     ),
+
+  getDocumentManifest: (id: string, token: string, page = 1) =>
+    request<DocumentManifest>(`/api/content/${id}/document/manifest?page=${page}`, { token }),
 
   parentChildren: (token: string) =>
     request<{

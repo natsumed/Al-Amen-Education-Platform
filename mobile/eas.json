@@ -30,6 +30,21 @@
         "EXPO_PUBLIC_API_URL": "https://amanallahedition.com"
       }
     },
+    "android-direct": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_API_URL": "https://amanallahedition.com" }
+    },
+    "android-store": {
+      "distribution": "store",
+      "android": { "buildType": "app-bundle" },
+      "env": { "EXPO_PUBLIC_API_URL": "https://amanallahedition.com" }
+    },
+    "ios-testflight": {
+      "distribution": "store",
+      "ios": { "simulator": false },
+      "env": { "EXPO_PUBLIC_API_URL": "https://amanallahedition.com" }
+    },
     "production": {
       "android": {
         "buildType": "app-bundle"
@@ -41,6 +56,7 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "ios-testflight": {}
   }
 }

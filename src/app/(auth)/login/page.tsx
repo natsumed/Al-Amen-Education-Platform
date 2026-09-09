@@ -82,13 +82,9 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true)
     try {
-      const result = await signIn("google", { redirect: false })
-      if (result?.error) {
-        toast.error(isAr ? "تسجيل الدخول عبر جوجل غير متاح حالياً" : "La connexion Google n'est pas disponible actuellement")
-      } else if (result?.ok) {
-        toast.success(isAr ? "تم تسجيل الدخول بنجاح!" : "Connexion réussie!")
-        await fetchUserRoleAndRedirect()
-      }
+      // OAuth must perform the browser redirect. `redirect:false` leaves the
+      // authorization URL unused and makes a valid Google login look broken.
+      await signIn("google", { callbackUrl: "/" })
     } catch {
       toast.error(isAr ? "تسجيل الدخول عبر جوجل غير متاح حالياً" : "La connexion Google n'est pas disponible actuellement")
     } finally {

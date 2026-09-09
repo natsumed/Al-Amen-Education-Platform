@@ -8,7 +8,10 @@ import { useAuth } from "../lib/auth-context"
 import { LoginScreen } from "../screens/auth/LoginScreen"
 import { RegisterScreen } from "../screens/auth/RegisterScreen"
 import { ForgotPasswordScreen } from "../screens/auth/ForgotPasswordScreen"
+import { VerifyEmailScreen } from "../screens/auth/VerifyEmailScreen"
+import { ResetPasswordScreen } from "../screens/auth/ResetPasswordScreen"
 import { AdminBlockedScreen } from "../screens/AdminBlockedScreen"
+import { UpdateRequiredScreen } from "../screens/UpdateRequiredScreen"
 import { LearnerTabsNavigator, ParentTabsNavigator } from "./LearnerTabs"
 import { useAppTheme, useColors } from "../theme"
 import type { RootStackParamList } from "./types"
@@ -21,16 +24,18 @@ const linking: LinkingOptions<RootStackParamList> = {
     screens: {
       LearnerTabs: {
         screens: {
-          CatalogueTab: { screens: { ContentDetail: "content/:id" } },
+      CatalogueTab: { screens: { ContentDetail: "content/:id" } },
           ProfileTab: { screens: { Subscription: "subscription" } },
         },
       },
+      VerifyEmail: "verify-email",
+      ResetPassword: "reset-password",
     },
   },
 }
 
 export function RootNavigator() {
-  const { user, loading } = useAuth()
+  const { user, loading, updateRequired } = useAuth()
   const { isDark } = useAppTheme()
   const colors = useColors()
 
@@ -66,11 +71,15 @@ export function RootNavigator() {
     <NavigationContainer theme={navTheme} linking={linking} key={isDark ? "dark" : "light"}>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!user ? (
+        {updateRequired ? (
+          <Stack.Screen name="AdminBlocked" component={UpdateRequiredScreen} />
+        ) : !user ? (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
           </>
         ) : user.role === "ADMIN" ? (
           <Stack.Screen name="AdminBlocked" component={AdminBlockedScreen} />

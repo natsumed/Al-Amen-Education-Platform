@@ -24,8 +24,21 @@ export async function POST(req: NextRequest) {
     const token = crypto.randomBytes(32).toString("hex")
     const expiry = new Date(Date.now() + 20 * 60 * 1000)
 
-    await prisma.user.update({ where: { id: user.id }, data: { resetToken: hashOpaqueToken(token), resetTokenExp: expiry } })
-    await sendPasswordResetEmail(user.email, user.fullName, token)
+    await prisma.$transaction(async (tx) => {
+      await tx.oneTimeToken.updateMany({
+        where: { userId: user.id, purpose: "PASSWORD_RESET", consumedAt: null, revokedAt: null },
+        data: { revokedAt: new Date() },
+      })
+      await tx.oneTimeToken.create({
+        data: {
+          userId: user.id,
+          purpose: "PASSWORD_RESET",
+          tokenHash: hashOpaqueToken(token),
+          expiresAt: expiry,
+        },
+      })
+    })
+    await sendPasswordResetEmail(user.email, user.fullName, token, user.id)
 
     // Log reset link for local testing (Resend not configured in dev)
     if (process.env.NODE_ENV === "development") {

@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { View, Text, StyleSheet, ActivityIndicator, Linking, Pressable, Share, ScrollView } from "react-native"
+import { View, Text, StyleSheet, ActivityIndicator, Linking, Pressable, ScrollView, Image } from "react-native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import * as ScreenCapture from "expo-screen-capture"
 import { VdoPlayerView } from "vdocipher-rn-bridge"
 import { Ionicons } from "@expo/vector-icons"
-import { api, getApiBaseUrl, type ContentItem } from "../../lib/api"
+import { api, getApiBaseUrl, type ContentItem, type DocumentManifest } from "../../lib/api"
 import { submitProgress } from "../../lib/offline-queue"
 import { useAuth } from "../../lib/auth-context"
 import { contentDescription, contentTitle, t } from "../../lib/i18n"
@@ -25,6 +25,7 @@ export function ContentDetailScreen({ route, navigation }: Props) {
   const { token, language } = useAuth()
   const [content, setContent] = useState<(ContentItem & { access?: ContentItem["access"] }) | null>(null)
   const [playback, setPlayback] = useState<{ otp: string; playbackInfo: string; sessionCode: string } | null>(null)
+  const [document, setDocument] = useState<DocumentManifest | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [playbackError, setPlaybackError] = useState("")
@@ -58,9 +59,13 @@ export function ContentDetailScreen({ route, navigation }: Props) {
         .then((result) => setRelated((result.items || []).filter((item) => item.id !== id).slice(0, 6)))
       if (data.access?.canAccess && token) {
         try {
-          const authorized = await api.getPlayback(id, token)
-          setPlayback(authorized)
-          sendProgress(10)
+          if (data.contentType === "BOOK") {
+            setDocument(await api.getDocumentManifest(id, token))
+          } else {
+            const authorized = await api.getPlayback(id, token)
+            setPlayback(authorized)
+            sendProgress(10)
+          }
         } catch (authorizationError) {
           setPlaybackError(authorizationError instanceof Error ? authorizationError.message : t("noMedia", language))
         }
@@ -83,13 +88,6 @@ export function ContentDetailScreen({ route, navigation }: Props) {
     return () => clearTimeout(timer)
   }, [playback, sendProgress])
 
-  useEffect(() => {
-    void ScreenCapture.enableAppSwitcherProtectionAsync(1)
-    return () => {
-      void ScreenCapture.disableAppSwitcherProtectionAsync()
-    }
-  }, [])
-
   const markComplete = () => sendProgress(100)
 
   const sendReview = async () => {
@@ -105,16 +103,6 @@ export function ContentDetailScreen({ route, navigation }: Props) {
       | undefined
     if (parent) parent.navigate("ProfileTab", { screen: "Subscription" })
     else void Linking.openURL(`${getApiBaseUrl()}/pricing`)
-  }
-
-  const shareContent = async () => {
-    try {
-      await Share.share({
-        message: `${content ? contentTitle(content, language) : "Amenallah"} — ${getApiBaseUrl()}/content/${id}`,
-      })
-    } catch {
-      /* dismissed */
-    }
   }
 
   if (loading) {
@@ -149,9 +137,6 @@ export function ContentDetailScreen({ route, navigation }: Props) {
             {content.isFree ? t("free", language) : t("premium", language)}
           </Text>
         </View>
-        <Pressable style={styles.shareBtn} onPress={shareContent} hitSlop={8}>
-          <Ionicons name="share-social-outline" size={20} color={colors.primary} />
-        </Pressable>
       </View>
 
       <Text style={styles.title}>{title}</Text>
@@ -192,6 +177,21 @@ export function ContentDetailScreen({ route, navigation }: Props) {
           </View>
           <PrimaryButton label={t("markComplete", language)} onPress={markComplete} style={styles.btn} />
         </>
+      ) : null}
+
+      {canAccess && document ? (
+        <View style={[styles.document, shadow.card]}>
+          <Image
+            source={{ uri: `${getApiBaseUrl()}${document.pages.find((page) => page.page === document.currentPage)?.url || ""}`, headers: { Authorization: `Bearer ${token}` } }}
+            style={styles.documentPage}
+            resizeMode="contain"
+          />
+          <View style={styles.documentControls}>
+            <PrimaryButton label="‹" disabled={document.currentPage <= 1} onPress={async () => setDocument(await api.getDocumentManifest(id, token!, document.currentPage - 1))} />
+            <Text style={styles.progressLabel}>{document.currentPage} / {document.pageCount}</Text>
+            <PrimaryButton label="›" disabled={document.currentPage >= document.pageCount} onPress={async () => setDocument(await api.getDocumentManifest(id, token!, document.currentPage + 1))} />
+          </View>
+        </View>
       ) : null}
 
       {canAccess && !playback ? (
@@ -255,6 +255,9 @@ const styles = StyleSheet.create({
   premium: { backgroundColor: colors.warningBg },
   premiumText: { color: colors.warning },
   shareBtn: { marginLeft: "auto" },
+  document: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.sm, marginBottom: spacing.md },
+  documentPage: { width: "100%", height: 480, backgroundColor: "#111" },
+  documentControls: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: spacing.sm },
   title: { ...typography.h1, color: colors.text, marginBottom: spacing.xs },
   subMeta: { ...typography.caption, color: colors.muted, marginBottom: spacing.md },
   desc: { ...typography.body, color: colors.textSecondary, lineHeight: 24, marginBottom: spacing.xl },
