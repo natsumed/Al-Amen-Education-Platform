@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { OAuth2Client } from "google-auth-library"
 import { prisma } from "@/lib/prisma"
 import { generatePublicId } from "@/lib/user-id"
-import { generateOpaqueToken, hashOpaqueToken } from "@/lib/security-crypto"
-import { MOBILE_ACCESS_TTL_SECONDS, MOBILE_REFRESH_TTL_SECONDS, signMobileToken } from "@/lib/mobile-auth"
-import type { Role } from "@/types"
+import { issueMobileSession } from "@/lib/mobile-session"
 import { verifyMfaCode } from "@/lib/mfa"
 
 function deviceFrom(body: Record<string, unknown>) {
@@ -28,8 +26,13 @@ export async function POST(req: NextRequest) {
     const payload = ticket.getPayload()
     if (!payload?.sub || !payload.email || payload.email_verified !== true) return NextResponse.json({ error: "Compte Google non vérifié" }, { status: 401 })
 
+    const email = payload.email.trim().toLowerCase()
     const existingExternal = await prisma.externalAccount.findUnique({ where: { provider_providerAccountId: { provider: "google", providerAccountId: payload.sub } }, include: { user: true } })
-    let user = existingExternal?.user || await prisma.user.findUnique({ where: { email: payload.email.trim().toLowerCase() } })
+    if (existingExternal?.revokedAt) return NextResponse.json({ error: "Connexion Google révoquée", code: "EXTERNAL_ACCOUNT_REVOKED" }, { status: 403 })
+    if (existingExternal && existingExternal.user.email !== email) {
+      return NextResponse.json({ error: "Compte Google incohérent", code: "EXTERNAL_ACCOUNT_CONFLICT" }, { status: 403 })
+    }
+    let user = existingExternal?.user || await prisma.user.findUnique({ where: { email } })
     if (user?.isBanned) return NextResponse.json({ error: "Compte suspendu" }, { status: 403 })
     if (user?.role === "ADMIN") return NextResponse.json({ error: "Les administrateurs utilisent le web", code: "ADMIN_WEB_ONLY" }, { status: 403 })
     if (user?.role === "TEACHER" && !existingExternal) return NextResponse.json({ error: "Associez Google depuis le compte enseignant avec MFA", code: "TEACHER_LINK_REQUIRED" }, { status: 403 })
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest) {
     if (!user) {
       const publicId = await generatePublicId()
       user = await prisma.$transaction(async (tx) => {
-        const created = await tx.user.create({ data: { email: payload.email!.trim().toLowerCase(), fullName: payload.name || "Google User", googleId: payload.sub, avatarUrl: payload.picture, emailVerified: new Date(), role: "STUDENT", publicId } })
+        const created = await tx.user.create({ data: { email, fullName: payload.name || "Google User", googleId: payload.sub, avatarUrl: payload.picture, emailVerified: new Date(), role: "PENDING", publicId } })
         await tx.externalAccount.create({ data: { provider: "google", providerAccountId: payload.sub!, userId: created.id, emailAtLink: created.email, lastLoginAt: new Date() } })
         return created
       })
@@ -52,14 +55,8 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const activeDevices = await prisma.deviceSession.count({ where: { userId: user.id, revokedAt: null } })
-    const existingDevice = await prisma.deviceSession.findUnique({ where: { userId_deviceId: { userId: user.id, deviceId: device.deviceId } } })
-    if (!existingDevice && activeDevices >= 3) return NextResponse.json({ error: "Limite de trois appareils atteinte", code: "DEVICE_LIMIT" }, { status: 403 })
-    const session = await prisma.deviceSession.upsert({ where: { userId_deviceId: { userId: user.id, deviceId: device.deviceId } }, update: { platform: device.platform, deviceName: device.deviceName, lastSeenAt: new Date(), revokedAt: null }, create: { userId: user.id, ...device } })
-    const refreshToken = generateOpaqueToken()
-    await prisma.refreshToken.create({ data: { deviceSessionId: session.id, tokenHash: hashOpaqueToken(refreshToken), expiresAt: new Date(Date.now() + MOBILE_REFRESH_TTL_SECONDS * 1000) } })
-    const accessToken = await signMobileToken({ sub: user.id, email: user.email, role: user.role as Role, fullName: user.fullName, deviceSessionId: session.id, sessionVersion: user.sessionVersion })
-    return NextResponse.json({ accessToken, token: accessToken, refreshToken, expiresIn: MOBILE_ACCESS_TTL_SECONDS, user: { id: user.id, publicId: user.publicId, email: user.email, fullName: user.fullName, role: user.role, avatarUrl: user.avatarUrl } }, { headers: { "Cache-Control": "no-store" } })
+    const session = await issueMobileSession(user, device)
+    return NextResponse.json({ ...session, onboardingRequired: user.role === "PENDING" }, { headers: { "Cache-Control": "no-store" } })
   } catch (error) {
     console.error("Mobile Google login error", error instanceof Error ? error.message : "unknown")
     return NextResponse.json({ error: "Google login indisponible" }, { status: 401 })

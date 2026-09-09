@@ -12,13 +12,19 @@ export type AuthUser = {
   deviceSessionId?: string
 }
 
+type RequestUserOptions = {
+  /** Social users must finish onboarding before they can use normal APIs. */
+  allowPending?: boolean
+}
+
 /**
  * Resolve the current user from NextAuth session OR mobile Bearer token.
  * Use in API routes that must work for both web and Android.
  */
-export async function getRequestUser(req?: NextRequest): Promise<AuthUser | null> {
+export async function getRequestUser(req?: NextRequest, options: RequestUserOptions = {}): Promise<AuthUser | null> {
   const session = await auth()
   if (session?.user?.id) {
+    if (session.user.role === "PENDING" && !options.allowPending) return null
     return {
       id: session.user.id,
       email: session.user.email ?? "",
@@ -53,7 +59,7 @@ export async function getRequestUser(req?: NextRequest): Promise<AuthUser | null
   })
 
   const device = user?.deviceSessions[0]
-  if (!user || user.isBanned || user.sessionVersion !== payload.sessionVersion || !device || device.revokedAt) {
+  if (!user || user.isBanned || user.role === "PENDING" && !options.allowPending || user.sessionVersion !== payload.sessionVersion || !device || device.revokedAt) {
     return null
   }
 

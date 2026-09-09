@@ -9,7 +9,7 @@ on:
         type: choice
         options: [android-direct, android-store, ios-testflight]
       publish_android:
-        description: Publish the Android APK manifest after approval
+        description: Publish the verified Android APK after production approval
         required: true
         default: false
         type: boolean
@@ -34,6 +34,7 @@ jobs:
       - run: npx tsc --noEmit
       - run: npx expo-doctor
       - run: npm audit --audit-level=critical
+      - run: npx expo prebuild --platform android --no-install --non-interactive
 
   build:
     needs: validate
@@ -50,29 +51,44 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci --audit=false
-      - name: Build signed artifact
+      - name: Require EAS credentials
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: test -n "$EXPO_TOKEN"
+      - name: Build immutable EAS artifact
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
           EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
-        run: npx eas build --platform ${{ startsWith(inputs.platform, 'android') && 'android' || 'ios' }} --profile ${{ inputs.platform }} --non-interactive --wait
-      - name: Download latest Android APK
-        if: startsWith(inputs.platform, 'android-direct')
+        run: |
+          npx --yes eas-cli@21.2.0 build --platform ${{ startsWith(inputs.platform, 'android') && 'android' || 'ios' }} --profile ${{ inputs.platform }} --non-interactive --wait --json > build.json
+          jq -e -r '.[0].id' build.json > build-id.txt
+      - name: Download and verify the exact Android APK
+        if: inputs.platform == 'android-direct'
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx eas build:download --platform android --profile android-direct --latest --path ./dist/amenallah.apk
-      - name: Verify Android artifact
-        if: startsWith(inputs.platform, 'android-direct')
         run: |
+          BUILD_ID="$(cat build-id.txt)"
           mkdir -p dist
-          sha256sum dist/amenallah.apk | tee dist/amenallah.apk.sha256
-          if command -v apksigner >/dev/null 2>&1; then apksigner verify --verbose dist/amenallah.apk; fi
+          npx --yes eas-cli@21.2.0 build:download --id "$BUILD_ID" --path ./dist/amenallah.apk
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apksigner aapt
+          apksigner verify --verbose --print-certs dist/amenallah.apk
+          aapt dump badging dist/amenallah.apk | grep -F "package: name='tn.amenallah.education'"
+          VERSION="$(node -p "require('./app.json').expo.version")"
+          BUILD="$(node -p "require('./app.json').expo.android.versionCode")"
+          SIGNATURE="$(apksigner verify --print-certs dist/amenallah.apk | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 | tr -d ':')"
+          test -n "$SIGNATURE"
+          SHA256="$(sha256sum dist/amenallah.apk | awk '{print $1}')"
+          SIZE="$(stat -c%s dist/amenallah.apk)"
+          printf 'VERSION=%s\nBUILD=%s\nSIGNATURE=%s\nSHA256=%s\nSIZE=%s\nBUILD_ID=%s\n' "$VERSION" "$BUILD" "$SIGNATURE" "$SHA256" "$SIZE" "$BUILD_ID" > dist/metadata.env
+          printf '%s  %s\n' "$SHA256" amenallah.apk > dist/amenallah.apk.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: mobile-${{ inputs.platform }}-${{ github.sha }}
           path: mobile/dist
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   publish:
     if: inputs.publish_android && inputs.platform == 'android-direct'
@@ -84,8 +100,34 @@ jobs:
         with:
           name: mobile-${{ inputs.platform }}-${{ github.sha }}
           path: dist
-      - name: Refuse an unapproved or incomplete publication
+      - name: Configure restricted deployment access
+        env:
+          MOBILE_RELEASE_SSH_KEY: ${{ secrets.MOBILE_RELEASE_SSH_KEY }}
+          MOBILE_RELEASE_SSH_KNOWN_HOSTS: ${{ secrets.MOBILE_RELEASE_SSH_KNOWN_HOSTS }}
         run: |
-          test -s dist/amenallah.apk
-          test -s dist/amenallah.apk.sha256
-          echo "Artifact verified for commit $GITHUB_SHA. Server publication is intentionally a protected follow-up step."
+          test -n "$MOBILE_RELEASE_SSH_KEY"
+          test -n "$MOBILE_RELEASE_SSH_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$MOBILE_RELEASE_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$MOBILE_RELEASE_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Upload, register, verify, then publish
+        env:
+          MOBILE_RELEASE_SSH_HOST: ${{ secrets.MOBILE_RELEASE_SSH_HOST }}
+          MOBILE_RELEASE_SSH_USER: ${{ secrets.MOBILE_RELEASE_SSH_USER }}
+          MOBILE_RELEASE_SSH_PORT: ${{ secrets.MOBILE_RELEASE_SSH_PORT }}
+        run: |
+          test -n "$MOBILE_RELEASE_SSH_HOST"
+          test -n "$MOBILE_RELEASE_SSH_USER"
+          source dist/metadata.env
+          PORT="${MOBILE_RELEASE_SSH_PORT:-22}"
+          REMOTE_TMP="/tmp/amenallah-${GITHUB_SHA}.apk"
+          scp -P "$PORT" -i ~/.ssh/id_ed25519 dist/amenallah.apk "$MOBILE_RELEASE_SSH_USER@$MOBILE_RELEASE_SSH_HOST:$REMOTE_TMP"
+          ssh -p "$PORT" -i ~/.ssh/id_ed25519 "$MOBILE_RELEASE_SSH_USER@$MOBILE_RELEASE_SSH_HOST" "MOBILE_VERSION='$VERSION' MOBILE_BUILD_NUMBER='$BUILD' MOBILE_SOURCE_COMMIT='$GITHUB_SHA' MOBILE_SIGNATURE_SHA256='$SIGNATURE' /opt/amenallah/scripts/publish-mobile-apk.sh '$REMOTE_TMP' && rm -f '$REMOTE_TMP' && cd /opt/amenallah && docker compose --env-file runtime.env -f docker-compose.yml exec -T prod-app node scripts/register-mobile-release.mjs '/srv/amenallah/releases/android/$VERSION/$BUILD/manifest.json'"
+          URL="https://amanallahedition.com/downloads/android/$VERSION/$BUILD/amenallah.apk"
+          curl -fsSI "$URL" | grep -qi 'content-type: application/vnd.android.package-archive'
+          curl -fsSI "$URL" | grep -qi 'content-disposition: attachment'
+          test "$(curl -fsSL -r 0-31 "$URL" | wc -c)" -eq 32
+          curl -fsS "https://amanallahedition.com/api/mobile/releases/current?platform=ANDROID" | grep -q '"ready":false'
+          ssh -p "$PORT" -i ~/.ssh/id_ed25519 "$MOBILE_RELEASE_SSH_USER@$MOBILE_RELEASE_SSH_HOST" "cd /opt/amenallah && MOBILE_RELEASE_PUBLISH=true docker compose --env-file runtime.env -f docker-compose.yml exec -T prod-app node scripts/register-mobile-release.mjs '/srv/amenallah/releases/android/$VERSION/$BUILD/manifest.json'"
+          curl -fsS "https://amanallahedition.com/api/mobile/releases/current?platform=ANDROID" | grep -q "\"buildNumber\":$BUILD"

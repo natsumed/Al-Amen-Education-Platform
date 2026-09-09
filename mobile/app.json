@@ -2,20 +2,15 @@
   "expo": {
     "name": "Amenallah",
     "slug": "al-amen-education",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "alamen",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#2040e0"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "tn.amenallah.education",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "usesAppleSignIn": true,
       "associatedDomains": ["applinks:amanallahedition.com"],
       "infoPlist": {
@@ -31,8 +26,7 @@
     },
     "android": {
       "package": "tn.amenallah.education",
-      "versionCode": 3,
-      "usesCleartextTraffic": false,
+      "versionCode": 4,
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
       ],

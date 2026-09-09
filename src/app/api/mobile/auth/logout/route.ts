@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getRequestUser } from "@/lib/request-auth"
 
 export async function POST(req: NextRequest) {
-  const user = await getRequestUser(req)
+  const user = await getRequestUser(req, { allowPending: true })
   if (!user?.deviceSessionId) return NextResponse.json({ ok: true })
 
   const now = new Date()

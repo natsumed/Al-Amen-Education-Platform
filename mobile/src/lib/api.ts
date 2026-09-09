@@ -185,12 +185,12 @@ export const api = {
     }),
 
   loginWithGoogle: (idToken: string, device: { deviceId: string; platform: string; deviceName?: string }, totpCode?: string) =>
-    request<{ accessToken: string; token: string; refreshToken: string; expiresIn: number; user: MobileUser }>("/api/mobile/auth/google", {
+    request<{ accessToken: string; token: string; refreshToken: string; expiresIn: number; user: MobileUser; onboardingRequired?: boolean }>("/api/mobile/auth/google", {
       method: "POST", body: JSON.stringify({ idToken, totpCode, ...device }),
     }),
 
   loginWithApple: (identityToken: string, device: { deviceId: string; platform: string; deviceName?: string }, totpCode?: string) =>
-    request<{ accessToken: string; token: string; refreshToken: string; expiresIn: number; user: MobileUser }>("/api/mobile/auth/apple", {
+    request<{ accessToken: string; token: string; refreshToken: string; expiresIn: number; user: MobileUser; onboardingRequired?: boolean }>("/api/mobile/auth/apple", {
       method: "POST", body: JSON.stringify({ identityToken, totpCode, ...device }),
     }),
 
@@ -216,7 +216,7 @@ export const api = {
     role?: "STUDENT" | "TEACHER" | "PARENT"
     studentPublicId?: string
   }) =>
-    request<{ message: string; userId: string; publicId: string }>("/api/auth/register", {
+    request<{ status: "EMAIL_VERIFICATION_REQUIRED"; message: string; userId: string; publicId: string; maskedEmail: string; linkPending: boolean }>("/api/auth/register", {
       method: "POST",
       body: JSON.stringify({ role: "STUDENT", ...input }),
     }),
@@ -226,6 +226,21 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email }),
     }),
+
+  resendVerification: (email: string) =>
+    request<{ message: string }>("/api/auth/verify-email/resend", { method: "POST", body: JSON.stringify({ email }) }),
+
+  onboarding: (token: string) =>
+    request<{ user: MobileUser; mfaEnabled: boolean }>("/api/auth/onboarding", { token }),
+
+  completeOnboarding: (token: string, input: { role: "STUDENT" | "PARENT" | "TEACHER"; preferredLanguage: "fr" | "ar"; phone?: string; studentPublicId?: string }) =>
+    request<{ user: MobileUser; linkPending: boolean }>("/api/auth/onboarding", { method: "POST", token, body: JSON.stringify(input) }),
+
+  startMfa: (token: string) =>
+    request<{ secret: string; uri: string }>("/api/security/mfa", { method: "POST", token }),
+
+  confirmMfa: (token: string, code: string) =>
+    request<{ enabled: boolean; recoveryCodes: string[] }>("/api/security/mfa", { method: "PUT", token, body: JSON.stringify({ code }) }),
 
   verifyEmail: (token: string) => request<{ ok: boolean; message: string }>("/api/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
 

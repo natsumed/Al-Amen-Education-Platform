@@ -171,6 +171,13 @@ export const updateUserRoleSchema = z.object({
   role: z.enum(["ADMIN", "STUDENT", "TEACHER", "PARENT"]),
 })
 
+export const socialOnboardingSchema = z.object({
+  role: z.enum(["STUDENT", "TEACHER", "PARENT"]),
+  preferredLanguage: z.enum(["fr", "ar"]).default("fr"),
+  phone: z.string().trim().max(40).optional(),
+  studentPublicId: z.string().regex(/^\d{8}$/, "N° compte élève invalide").optional(),
+})
+
 export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
@@ -184,3 +191,4 @@ export type ParentLinkRespondInput = z.infer<typeof parentLinkRespondSchema>
 export type ProgressInput = z.infer<typeof progressSchema>
 export type ReviewInput = z.infer<typeof reviewSchema>
 export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>
+export type SocialOnboardingInput = z.infer<typeof socialOnboardingSchema>

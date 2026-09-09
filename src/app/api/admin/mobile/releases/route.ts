@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       minimumVersion: typeof input.minimumVersion === "string" ? input.minimumVersion : null,
       minimumBuildNumber: Number.isInteger(Number(input.minimumBuildNumber)) ? Number(input.minimumBuildNumber) : null,
       appStoreUrl: typeof input.appStoreUrl === "string" ? input.appStoreUrl : null,
+      sourceCommit: typeof input.sourceCommit === "string" && /^[a-f0-9]{7,64}$/i.test(input.sourceCommit) ? input.sourceCommit : null,
       isMandatory: input.isMandatory === true,
     },
   })

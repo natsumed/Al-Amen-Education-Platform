@@ -3,14 +3,15 @@
 The repository contains the direct APK, Play AAB, and iOS TestFlight EAS
 profiles. Android direct distribution is independent from iOS approval.
 
-1. Set the production EAS project and credentials, then run the protected
+1. Set the EAS project and protected `EXPO_TOKEN`, then run the protected
    `Mobile release` workflow with `android-direct`.
-2. Download the APK, verify it with `apksigner`, and run
-   `MOBILE_VERSION=... MOBILE_BUILD_NUMBER=... ./scripts/publish-mobile-apk.sh
-   artifact.apk` on the release host.
-3. Create an unpublished release with `POST /api/admin/mobile/releases` as an
-   administrator, review the checksum and signature, then publish it with the
-   admin PATCH endpoint. The `/app` resolver only uses published releases.
+2. Configure protected GitHub secrets `MOBILE_RELEASE_SSH_HOST`,
+   `MOBILE_RELEASE_SSH_USER`, `MOBILE_RELEASE_SSH_KEY`, and
+   `MOBILE_RELEASE_SSH_KNOWN_HOSTS` for the restricted VPS deploy account.
+3. The approved workflow downloads its exact EAS build, verifies its signature
+   and package name, uploads it atomically, registers an unpublished database
+   record, verifies HTTPS delivery, and only then publishes it. The `/app`
+   resolver only uses the published release.
 4. Use `android-store` for the Play AAB and `ios-testflight` for iOS. Never put
    an AAB, IPA, keystore, or App Store credential in `/srv/amenallah/releases`.
 

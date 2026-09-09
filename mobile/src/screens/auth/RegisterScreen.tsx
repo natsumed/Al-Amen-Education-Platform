@@ -16,7 +16,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "Register">
 type Role = "STUDENT" | "TEACHER" | "PARENT"
 
 export function RegisterScreen({ navigation }: Props) {
-  const { language, login } = useAuth()
+  const { language } = useAuth()
   const [role, setRole] = useState<Role>("STUDENT")
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
@@ -42,7 +42,7 @@ export function RegisterScreen({ navigation }: Props) {
     setBusy(true)
     setError("")
     try {
-      await api.register({
+      const result = await api.register({
         fullName,
         email: email.trim(),
         phone: phone.trim() || undefined,
@@ -50,8 +50,9 @@ export function RegisterScreen({ navigation }: Props) {
         role,
         studentPublicId: role === "PARENT" ? studentPublicId.trim() : undefined,
       })
-      // Register does not return a token — sign in immediately for a seamless flow.
-      await login(email.trim(), password)
+      // Activation is deliberately separate from authentication. Never retain
+      // the password after registration or try to sign in before verification.
+      navigation.replace("EmailVerificationPending", { email: email.trim().toLowerCase(), linkPending: result.linkPending })
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error")
     } finally {

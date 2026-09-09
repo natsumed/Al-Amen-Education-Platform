@@ -1,4 +1,4 @@
-const { withAndroidManifest } = require("@expo/config-plugins")
+const { withAndroidManifest } = require("expo/config-plugins")
 
 /**
  * Prevent Android from exposing application audio to MediaProjection-based

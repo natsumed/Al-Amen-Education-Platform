@@ -10,7 +10,7 @@ import { useEffect, useState } from "react"
 
 type ReleaseManifest = {
   ready: boolean
-  android: null | { version: string; buildNumber?: number; url: string; checksumSha256?: string | null; sizeBytes?: string | null; isMandatory?: boolean }
+  android: null | { version: string; buildNumber?: number; url: string; checksumSha256?: string | null; sizeBytes?: string | null; releasedAt?: string | null; isMandatory?: boolean }
   ios: null | { version: string; buildNumber?: number; appStoreUrl?: string | null; isMandatory?: boolean }
 }
 
@@ -74,6 +74,7 @@ export default function DownloadPage() {
               {isAr ? "الإصدار" : "Version"} {android?.version || ios?.version || "—"} ·{" "}
               <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">tn.amenallah.education</code>
             </p>
+            {android ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{isAr ? "البناء" : "Build"} {android.buildNumber}{android.sizeBytes ? ` · ${(Number(android.sizeBytes) / (1024 * 1024)).toFixed(1)} MB` : ""}</p> : null}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">

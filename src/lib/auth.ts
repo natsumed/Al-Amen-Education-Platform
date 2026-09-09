@@ -42,8 +42,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({ where: { email }, include: { mfaCredential: true } })
 
         if (!user || !user.passwordHash) return null
-        if (user.isBanned) return null
-        if (!user.emailVerified) throw new Error("EMAIL_NOT_VERIFIED")
+        if (user.isBanned || user.role === "PENDING") return null
 
         const password = credentials.password as string
         const isValid = user.passwordHash.startsWith("$argon2")
@@ -51,6 +50,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           : await bcrypt.compare(password, user.passwordHash)
 
         if (!isValid) return null
+        // Verify the password before disclosing activation state. A correct
+        // password for an inactive account is not a failed login attempt.
+        if (!user.emailVerified) {
+          await loginLimiter.reset(email)
+          throw new Error("EMAIL_NOT_VERIFIED")
+        }
 
         const mfaEnabled = Boolean(user.mfaCredential?.enabledAt)
         if (mfaEnabled) {
@@ -88,21 +93,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const verified = typeof profile === "object" && profile !== null &&
             "email_verified" in profile && profile.email_verified === true
           if (!verified || !user.email) return false
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email! },
+          const email = user.email.trim().toLowerCase()
+          const linkedAccount = await prisma.externalAccount.findUnique({
+            where: { provider_providerAccountId: { provider: "google", providerAccountId: account.providerAccountId } },
+            include: { user: true },
+          })
+          if (linkedAccount?.revokedAt) return false
+          const existingUser = linkedAccount?.user ?? await prisma.user.findUnique({
+            where: { email },
             include: { mfaCredential: true, externalAccounts: true },
           })
+
+          // A Google subject is immutable. Never relink it to an account that
+          // happens to share an email address after the fact.
+          if (linkedAccount && linkedAccount.user.email !== email) return false
 
           if (!existingUser) {
             const { generatePublicId } = await import("./user-id")
             const publicId = await generatePublicId()
             const created = await prisma.user.create({
               data: {
-                email: user.email!,
+                email,
                 fullName: user.name ?? "Google User",
                 avatarUrl: user.image,
                 emailVerified: new Date(),
-                role: "STUDENT",
+                role: "PENDING",
                 publicId,
               },
             })
@@ -111,7 +126,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 provider: "google",
                 providerAccountId: account.providerAccountId,
                 userId: created.id,
-                emailAtLink: user.email,
+                emailAtLink: email,
                 lastLoginAt: new Date(),
               },
             })
@@ -134,8 +149,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               })
               await tx.externalAccount.upsert({
                 where: { provider_providerAccountId: { provider: "google", providerAccountId: account.providerAccountId } },
-                update: { lastLoginAt: new Date(), emailAtLink: user.email, revokedAt: null },
-                create: { provider: "google", providerAccountId: account.providerAccountId, userId: existingUser.id, emailAtLink: user.email, lastLoginAt: new Date() },
+                update: { lastLoginAt: new Date(), emailAtLink: email, revokedAt: null },
+                create: { provider: "google", providerAccountId: account.providerAccountId, userId: existingUser.id, emailAtLink: email, lastLoginAt: new Date() },
               })
             })
             Object.assign(user, {
@@ -166,12 +181,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.mfaEnrollmentRequired = (user as { mfaEnrollmentRequired?: boolean }).mfaEnrollmentRequired ?? false
       }
 
-      // Client called session.update({ image }) after avatar upload
+      // Client called session.update({ image }) after avatar upload or asked
+      // us to refresh claims after completing social onboarding.
       if (trigger === "update" && session && typeof session === "object") {
-        const patch = session as { image?: string | null; name?: string; fullName?: string }
+        const patch = session as { image?: string | null; name?: string; fullName?: string; refreshClaims?: boolean }
         if (patch.image !== undefined) token.picture = patch.image
         if (patch.fullName) token.fullName = patch.fullName
         if (patch.name) token.fullName = patch.name
+        if (patch.refreshClaims) token.lastChecked = 0
       }
 
       // Refresh role / ban / avatar periodically (Node runtime — not Edge middleware)

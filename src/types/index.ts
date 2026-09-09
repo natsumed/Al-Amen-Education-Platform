@@ -1,4 +1,7 @@
-export type Role = "ADMIN" | "STUDENT" | "TEACHER" | "PARENT"
+// PENDING is an internal, short-lived social-account state. It is never
+// selectable through registration or administration and has access only to
+// onboarding, MFA setup, and logout.
+export type Role = "ADMIN" | "STUDENT" | "TEACHER" | "PARENT" | "PENDING"
 export type Grade = "GRADE_1" | "GRADE_2" | "GRADE_3" | "GRADE_4" | "GRADE_5" | "GRADE_6"
 export type Subject = "ARABIC" | "FRENCH" | "MATH" | "SCIENCE" | "ISLAMIC" | "HISTORY" | "CIVIC" | "ARTS" | "ENGLISH"
 export type ContentType = "COURSE" | "BOOK" | "SERIES" | "ANIMATION"

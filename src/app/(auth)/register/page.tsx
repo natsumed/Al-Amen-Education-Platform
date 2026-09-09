@@ -51,16 +51,8 @@ export default function RegisterPage() {
               : "Registration failed"
         throw new Error(msg)
       }
-      if (result.linkPending) {
-        toast.success(
-          isAr
-            ? "تم إنشاء الحساب! بانتظار قبول التلميذ للربط."
-            : "Compte créé ! En attente de l'acceptation de l'élève."
-        )
-      } else {
-        toast.success(isAr ? "تم إنشاء الحساب بنجاح!" : "Compte créé avec succès!")
-      }
-      router.push("/login")
+      toast.success(isAr ? "تم إنشاء الحساب. تحقق من بريدك الإلكتروني." : "Compte créé. Vérifiez votre email.")
+      router.push("/verify-email/pending")
     } catch (e: any) {
       toast.error(e.message || (isAr ? "حدث خطأ" : "Une erreur est survenue"))
     } finally {

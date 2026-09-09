@@ -362,6 +362,7 @@ model MobileRelease {
   minimumVersion String?
   minimumBuildNumber Int?
   appStoreUrl    String?
+  sourceCommit   String?
   isMandatory    Boolean   @default(false)
   isPublished    Boolean   @default(false)
   releasedAt     DateTime?

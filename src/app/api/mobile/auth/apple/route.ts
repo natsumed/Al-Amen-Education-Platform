@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     const email = typeof verified.payload.email === "string" ? verified.payload.email.trim().toLowerCase() : ""
     if (!subject) return NextResponse.json({ error: "Jeton Apple invalide" }, { status: 401 })
     const external = await prisma.externalAccount.findUnique({ where: { provider_providerAccountId: { provider: "apple", providerAccountId: subject } }, include: { user: true } })
+    if (external?.revokedAt) return NextResponse.json({ error: "Connexion Apple révoquée", code: "EXTERNAL_ACCOUNT_REVOKED" }, { status: 403 })
     let user = external?.user || (email ? await prisma.user.findUnique({ where: { email } }) : null)
     if (user?.isBanned) return NextResponse.json({ error: "Compte suspendu" }, { status: 403 })
     if (user?.role === "ADMIN") return NextResponse.json({ error: "Les administrateurs utilisent le web", code: "ADMIN_WEB_ONLY" }, { status: 403 })
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     if (!user) {
       if (!email) return NextResponse.json({ error: "Apple doit fournir un email lors de la première connexion" }, { status: 400 })
       user = await prisma.$transaction(async (tx) => {
-        const created = await tx.user.create({ data: { email, fullName: "Apple User", emailVerified: new Date(), role: "STUDENT", publicId: await generatePublicId() } })
+        const created = await tx.user.create({ data: { email, fullName: "Apple User", emailVerified: new Date(), role: "PENDING", publicId: await generatePublicId() } })
         await tx.externalAccount.create({ data: { provider: "apple", providerAccountId: subject, userId: created.id, emailAtLink: email, lastLoginAt: new Date() } })
         return created
       })
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
       await prisma.externalAccount.upsert({ where: { provider_providerAccountId: { provider: "apple", providerAccountId: subject } }, update: { userId: user.id, emailAtLink: email || user.email, lastLoginAt: new Date(), revokedAt: null }, create: { provider: "apple", providerAccountId: subject, userId: user.id, emailAtLink: email || user.email, lastLoginAt: new Date() } })
     }
     const result = await issueMobileSession(user, { deviceId, platform, deviceName: typeof body?.deviceName === "string" ? body.deviceName : null })
-    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } })
+    return NextResponse.json({ ...result, onboardingRequired: user.role === "PENDING" }, { headers: { "Cache-Control": "no-store" } })
   } catch (error) {
     const code = error instanceof Error ? error.message : "APPLE_LOGIN_FAILED"
     return NextResponse.json({ error: code === "DEVICE_LIMIT" ? "Limite de trois appareils atteinte" : "Apple login indisponible", code }, { status: code === "DEVICE_LIMIT" ? 403 : 401 })

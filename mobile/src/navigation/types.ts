@@ -33,6 +33,8 @@ export type ParentTabParamList = {
 export type RootStackParamList = {
   Login: undefined
   Register: undefined
+  EmailVerificationPending: { email: string; linkPending: boolean }
+  SocialOnboarding: undefined
   ForgotPassword: undefined
   VerifyEmail: { token: string }
   ResetPassword: { token: string }

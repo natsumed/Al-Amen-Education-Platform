@@ -6,14 +6,14 @@ import { decryptSecret, encryptSecret } from "@/lib/security-crypto"
 import * as OTPAuth from "otpauth"
 
 export async function GET(req: NextRequest) {
-  const user = await getRequestUser(req)
+  const user = await getRequestUser(req, { allowPending: true })
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const credential = await prisma.mfaCredential.findUnique({ where: { userId: user.id }, select: { enabledAt: true, type: true } })
   return NextResponse.json({ required: ["ADMIN", "TEACHER"].includes(user.role), enabled: Boolean(credential?.enabledAt), type: credential?.type || null })
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getRequestUser(req)
+  const user = await getRequestUser(req, { allowPending: true })
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   try {
     const existing = await prisma.mfaCredential.findUnique({ where: { userId: user.id } })
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const user = await getRequestUser(req)
+  const user = await getRequestUser(req, { allowPending: true })
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const body = await req.json().catch(() => ({}))
   const code = typeof body.code === "string" ? body.code.replace(/\s/g, "") : ""

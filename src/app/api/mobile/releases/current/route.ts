@@ -25,6 +25,7 @@ export async function GET(req: Request) {
     minimumBuildNumber: release.minimumBuildNumber,
     isMandatory: release.isMandatory,
     appStoreUrl: release.appStoreUrl,
+    sourceCommit: release.sourceCommit,
     releasedAt: release.releasedAt?.toISOString() || null,
     updateRequired: Boolean(release.isMandatory && requestedBuild > 0 && release.minimumBuildNumber && requestedBuild < release.minimumBuildNumber),
   } : null

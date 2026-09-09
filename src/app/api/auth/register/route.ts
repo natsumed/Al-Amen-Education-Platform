@@ -8,6 +8,13 @@ import { generatePublicId, resolveUserByIdentifier } from "@/lib/user-id"
 import crypto from "crypto"
 import { hashOpaqueToken } from "@/lib/security-crypto"
 
+function maskEmail(email: string) {
+  const [local, domain] = email.split("@")
+  if (!domain) return "***"
+  const visible = local.length <= 2 ? local.slice(0, 1) : local.slice(0, 2)
+  return `${visible}${"*".repeat(Math.max(2, local.length - visible.length))}@${domain}`
+}
+
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown"
@@ -85,17 +92,29 @@ export async function POST(req: NextRequest) {
     await sendVerificationEmail(email, fullName, verificationToken, user.id)
 
     await registerLimiter.reset(ip)
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
+        status: "EMAIL_VERIFICATION_REQUIRED",
         message: linkPending
         ? "Compte créé — confirmez votre email; l'invitation est en attente d'acceptation"
           : "Compte créé — confirmez votre adresse email pour vous connecter",
         userId: user.id,
         publicId: user.publicId,
+        maskedEmail: maskEmail(email),
         linkPending,
       },
       { status: 201 }
     )
+    // The browser confirmation page needs a reload-safe resend target without
+    // putting the address (or a token) in its URL.
+    response.cookies.set("amenallah_pending_verification", Buffer.from(email).toString("base64url"), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 60,
+      path: "/",
+    })
+    return response
   } catch (error) {
     console.error("Register error:", error)
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })

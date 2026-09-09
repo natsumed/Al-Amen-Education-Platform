@@ -60,6 +60,16 @@ export default async function proxy(req: NextRequest) {
   const userRole = token?.role as string | undefined
   const mfaEnrollmentRequired = token?.mfaEnrollmentRequired === true
 
+  if (isLoggedIn && userRole === "PENDING") {
+    const allowed = pathname === "/auth/onboarding" || pathname.startsWith("/api/auth/onboarding") || pathname.startsWith("/api/security/mfa") || pathname.startsWith("/api/auth/")
+    if (!allowed) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Onboarding required", code: "ONBOARDING_REQUIRED" }, { status: 403 })
+      }
+      return NextResponse.redirect(new URL("/auth/onboarding", nextUrl))
+    }
+  }
+
   if (isLoggedIn && mfaEnrollmentRequired) {
     const allowed = pathname === "/settings" || pathname.startsWith("/api/security/mfa") || pathname.startsWith("/api/auth/") || pathname === "/api/users/me"
     if (!allowed) {
@@ -79,7 +89,7 @@ export default async function proxy(req: NextRequest) {
       PARENT: "/parent",
     }
     return NextResponse.redirect(
-      new URL(dashboardMap[userRole ?? "STUDENT"] ?? "/student", nextUrl)
+      new URL(userRole === "PENDING" ? "/auth/onboarding" : (dashboardMap[userRole ?? "STUDENT"] ?? "/student"), nextUrl)
     )
   }
 

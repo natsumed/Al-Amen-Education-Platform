@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET(req: NextRequest) {
   try {
-    const authUser = await getRequestUser(req)
+    const authUser = await getRequestUser(req, { allowPending: true })
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }

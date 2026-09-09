@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
@@ -29,8 +29,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [googleAvailable, setGoogleAvailable] = useState(false)
   const [totpCode, setTotpCode] = useState("")
   const { register, handleSubmit, formState: { errors } } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) })
+
+  useEffect(() => {
+    fetch("/api/auth/providers")
+      .then((response) => response.ok ? response.json() : {})
+      .then((providers: Record<string, unknown>) => setGoogleAvailable(Boolean(providers.google)))
+      .catch(() => setGoogleAvailable(false))
+  }, [])
 
   const fetchUserRoleAndRedirect = async () => {
     try {
@@ -60,6 +68,11 @@ export default function LoginPage() {
 
       const result = await signIn("credentials", { ...data, totpCode, redirect: false })
       if (result?.error) {
+        if (result.error.includes("EMAIL_NOT_VERIFIED")) {
+          toast.error(isAr ? "أكد بريدك الإلكتروني أولاً." : "Confirmez d'abord votre email.")
+          router.push("/verify-email/pending")
+          return
+        }
         const remaining = Math.max(0, (limitData.remaining ?? 5) - 1)
         if (remaining > 0) {
           toast.error(isAr
@@ -139,7 +152,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <Button variant="outline" className="w-full h-11" onClick={handleGoogleLogin} disabled={googleLoading}>
+        {googleAvailable ? <Button variant="outline" className="w-full h-11" onClick={handleGoogleLogin} disabled={googleLoading}>
           {googleLoading ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : (
@@ -151,7 +164,7 @@ export default function LoginPage() {
             </svg>
           )}
           {isAr ? "المتابعة مع جوجل" : "Continuer avec Google"}
-        </Button>
+        </Button> : null}
 
         <p className="text-center text-sm text-muted-foreground">
           {isAr ? "ليس لديك حساب؟ " : "Pas encore de compte? "}

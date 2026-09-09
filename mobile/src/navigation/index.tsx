@@ -7,6 +7,8 @@ import { StatusBar } from "expo-status-bar"
 import { useAuth } from "../lib/auth-context"
 import { LoginScreen } from "../screens/auth/LoginScreen"
 import { RegisterScreen } from "../screens/auth/RegisterScreen"
+import { EmailVerificationPendingScreen } from "../screens/auth/EmailVerificationPendingScreen"
+import { SocialOnboardingScreen } from "../screens/auth/SocialOnboardingScreen"
 import { ForgotPasswordScreen } from "../screens/auth/ForgotPasswordScreen"
 import { VerifyEmailScreen } from "../screens/auth/VerifyEmailScreen"
 import { ResetPasswordScreen } from "../screens/auth/ResetPasswordScreen"
@@ -77,10 +79,13 @@ export function RootNavigator() {
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="EmailVerificationPending" component={EmailVerificationPendingScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
             <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
           </>
+        ) : user.role === "PENDING" ? (
+          <Stack.Screen name="SocialOnboarding" component={SocialOnboardingScreen} />
         ) : user.role === "ADMIN" ? (
           <Stack.Screen name="AdminBlocked" component={AdminBlockedScreen} />
         ) : user.role === "PARENT" ? (
