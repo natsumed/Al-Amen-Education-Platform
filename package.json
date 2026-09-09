@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.21",
-    "@ai-sdk/openai": "^4.0.17",
+    "@ai-sdk/openai": "^4.0.20",
     "@ai-sdk/react": "^4.0.36",
     "@hookform/resolvers": "3.10.0",
     "@node-rs/argon2": "^2.0.2",
