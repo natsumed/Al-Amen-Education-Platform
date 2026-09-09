@@ -73,6 +73,11 @@ jobs:
         run: |
           npx expo prebuild --platform android --no-install --non-interactive
           test -f android/gradlew
+          # VdoCipher publishes its Android SDK in a GitHub Maven repository.
+          # Expo's generated project otherwise only searches Google/Maven Central
+          # (and the package-level repository is not consistently inherited by
+          # Gradle's dependency resolution management).
+          sed -i "/mavenCentral()/a\\    maven { url 'https://github.com/VdoCipher/maven-repo/raw/master/repo' }" android/build.gradle
           mkdir -p dist
           chmod +x android/gradlew
           cd android
