@@ -73,10 +73,11 @@ jobs:
         run: |
           npx expo prebuild --platform android --no-install --non-interactive
           test -f android/gradlew
-          chmod +x android/gradlew
-          ./android/gradlew :app:assembleRelease --no-daemon --stacktrace
           mkdir -p dist
-          cp android/app/build/outputs/apk/release/app-release.apk dist/amenallah.apk
+          chmod +x android/gradlew
+          cd android
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk ../dist/amenallah.apk
       - name: Download and verify the exact Android APK
         if: inputs.platform == 'android-direct' && env.EXPO_TOKEN != ''
         env:
