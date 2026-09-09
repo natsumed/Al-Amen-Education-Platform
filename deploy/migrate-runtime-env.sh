@@ -38,6 +38,16 @@ ensure_var CLICTOPAY_ENABLED false
 ensure_var CLICTOPAY_MERCHANT_ID ""
 ensure_var CLICTOPAY_API_URL ""
 ensure_var CLICTOPAY_API_SECRET ""
+ensure_var SMTP_HOST mail.spacemail.com
+ensure_var SMTP_PORT 465
+ensure_var SMTP_SECURE true
+ensure_var SMTP_USER support@amanallahedition.com
+ensure_var SMTP_PASSWORD ""
+ensure_var SMTP_FROM "Amenallah Edition <support@amanallahedition.com>"
+ensure_var SMTP_REPLY_TO support@amanallahedition.com
+# Keep delivery disabled until the mailbox password is rotated outside this
+# chat and installed in the protected runtime secret store.
+ensure_var EMAIL_WORKER_ENABLED false
 
 chmod 600 "$ENV_FILE"
 install -d -m 750 /srv/amenallah/releases

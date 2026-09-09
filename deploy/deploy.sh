@@ -36,7 +36,7 @@ case "$TARGET" in
     previous_tag="$(read_env_value STAGING_IMAGE_TAG)"
     export STAGING_IMAGE_TAG="$IMAGE_TAG_INPUT"
     export PROD_IMAGE_TAG="$(read_env_value PROD_IMAGE_TAG)"
-    services=(staging-db staging-valkey staging-app)
+    services=(staging-db staging-valkey staging-app staging-email-worker)
     app_service=staging-app
     tag_key=STAGING_IMAGE_TAG
     ;;
@@ -44,7 +44,7 @@ case "$TARGET" in
     previous_tag="$(read_env_value PROD_IMAGE_TAG)"
     export PROD_IMAGE_TAG="$IMAGE_TAG_INPUT"
     export STAGING_IMAGE_TAG="$(read_env_value STAGING_IMAGE_TAG)"
-    services=(prod-db prod-valkey prod-app)
+    services=(prod-db prod-valkey prod-app prod-email-worker)
     app_service=prod-app
     tag_key=PROD_IMAGE_TAG
     ;;
