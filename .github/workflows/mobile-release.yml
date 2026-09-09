@@ -40,6 +40,8 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     environment: mobile-release
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     defaults:
       run:
         working-directory: mobile
@@ -51,11 +53,13 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci --audit=false
-      - name: Require EAS credentials
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: test -n "$EXPO_TOKEN"
+      - name: Require EAS credentials for store/iOS builds
+        if: inputs.platform != 'android-direct' && env.EXPO_TOKEN == ''
+        run: |
+          echo "EXPO_TOKEN is required for Android Store and iOS TestFlight builds."
+          exit 1
       - name: Build immutable EAS artifact
+        if: env.EXPO_TOKEN != ''
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
@@ -64,14 +68,26 @@ jobs:
         run: |
           npx --yes eas-cli@21.2.0 build --platform ${{ startsWith(inputs.platform, 'android') && 'android' || 'ios' }} --profile ${{ inputs.platform }} --non-interactive --wait --json > build.json
           jq -e -r '.[0].id' build.json > build-id.txt
+      - name: Build local standalone Android artifact
+        if: inputs.platform == 'android-direct' && env.EXPO_TOKEN == ''
+        run: |
+          npx expo prebuild --platform android --no-install --non-interactive
+          test -f android/gradlew
+          chmod +x android/gradlew
+          ./android/gradlew :app:assembleRelease --no-daemon --stacktrace
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk dist/amenallah.apk
       - name: Download and verify the exact Android APK
-        if: inputs.platform == 'android-direct'
+        if: inputs.platform == 'android-direct' && env.EXPO_TOKEN != ''
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           BUILD_ID="$(cat build-id.txt)"
           mkdir -p dist
           npx --yes eas-cli@21.2.0 build:download --id "$BUILD_ID" --path ./dist/amenallah.apk
+      - name: Verify Android APK and write immutable metadata
+        if: inputs.platform == 'android-direct'
+        run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends apksigner aapt
           apksigner verify --verbose --print-certs dist/amenallah.apk
@@ -82,6 +98,7 @@ jobs:
           test -n "$SIGNATURE"
           SHA256="$(sha256sum dist/amenallah.apk | awk '{print $1}')"
           SIZE="$(stat -c%s dist/amenallah.apk)"
+          BUILD_ID="${BUILD_ID:-local-gradle}"
           printf 'VERSION=%s\nBUILD=%s\nSIGNATURE=%s\nSHA256=%s\nSIZE=%s\nBUILD_ID=%s\n' "$VERSION" "$BUILD" "$SIGNATURE" "$SHA256" "$SIZE" "$BUILD_ID" > dist/metadata.env
           printf '%s  %s\n' "$SHA256" amenallah.apk > dist/amenallah.apk.sha256
       - uses: actions/upload-artifact@v4
