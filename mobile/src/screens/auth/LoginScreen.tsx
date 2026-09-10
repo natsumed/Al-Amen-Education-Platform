@@ -10,8 +10,6 @@ import {
 } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import Constants from "expo-constants"
-import * as WebBrowser from "expo-web-browser"
-import * as Google from "expo-auth-session/providers/google"
 import * as AppleAuthentication from "expo-apple-authentication"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useAuth } from "../../lib/auth-context"
@@ -22,10 +20,9 @@ import { TextField } from "../../components/TextField"
 import { PrimaryButton } from "../../components/PrimaryButton"
 import { ErrorBanner } from "../../components/EmptyState"
 import { ThemeToggle } from "../../components/ThemeToggle"
+import { GoogleSignInButton } from "./GoogleSignInButton"
 import { radius, spacing, typography, useColors } from "../../theme"
 import type { RootStackParamList } from "../../navigation/types"
-
-WebBrowser.maybeCompleteAuthSession()
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">
 
@@ -49,23 +46,9 @@ export function LoginScreen({ navigation }: Props) {
   })
   const [socialBusy, setSocialBusy] = useState(false)
   const [appleAvailable, setAppleAvailable] = useState(false)
-  const [googleRequest, googleResponse, promptGoogle] = Google.useIdTokenAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    selectAccount: true,
-  })
-
   useEffect(() => {
     void AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false))
   }, [])
-
-  useEffect(() => {
-    const idToken = googleResponse?.type === "success" ? googleResponse.params?.id_token : undefined
-    if (!idToken) return
-    setSocialBusy(true)
-    void loginWithGoogle(idToken, totpCode.trim() || undefined).catch((error: unknown) => setError(error instanceof Error ? error.message : t("loginFailed", language))).finally(() => setSocialBusy(false))
-  }, [googleResponse, language, loginWithGoogle, totpCode])
 
   const onAppleLogin = async () => {
     setError("")
@@ -195,14 +178,19 @@ export function LoginScreen({ navigation }: Props) {
           />
 
           <PrimaryButton label={t("login", language)} onPress={onSubmit} loading={busy} />
-          <PrimaryButton
-            label={language === "ar" ? "المتابعة مع Google" : "Continuer avec Google"}
-            variant="outline"
-            onPress={() => { void promptGoogle() }}
-            loading={socialBusy}
-            disabled={!googleRequest}
-            style={styles.authLink}
-          />
+          {process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim() ? (
+            <GoogleSignInButton
+              webClientId={process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.trim()}
+              iosClientId={process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() || undefined}
+              label={language === "ar" ? "المتابعة مع Google" : "Continuer avec Google"}
+              loading={socialBusy}
+              totpCode={totpCode}
+              onToken={loginWithGoogle}
+              onBusyChange={setSocialBusy}
+              onError={(error) => setError(error instanceof Error ? error.message : t("loginFailed", language))}
+              style={styles.authLink}
+            />
+          ) : null}
           {Platform.OS === "ios" && appleAvailable ? (
             <PrimaryButton label={language === "ar" ? "المتابعة مع Apple" : "Continuer avec Apple"} variant="outline" onPress={() => { void onAppleLogin() }} loading={socialBusy} style={styles.authLink} />
           ) : null}
