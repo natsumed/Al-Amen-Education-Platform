@@ -42,6 +42,9 @@ jobs:
     environment: mobile-release
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      # The direct Gradle fallback does not read eas.json env entries. Keep
+      # the standalone APK pointed at the canonical HTTPS API as well.
+      EXPO_PUBLIC_API_URL: https://amanallahedition.com
     defaults:
       run:
         working-directory: mobile
