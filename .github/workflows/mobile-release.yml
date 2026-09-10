@@ -78,7 +78,7 @@ jobs:
           echo "EXPO_TOKEN is required for Android Store and iOS TestFlight builds."
           exit 1
       - name: Build immutable EAS artifact
-        if: env.EXPO_TOKEN != ''
+        if: inputs.platform != 'android-direct' && env.EXPO_TOKEN != ''
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
@@ -88,7 +88,10 @@ jobs:
           npx --yes eas-cli@21.2.0 build --platform ${{ startsWith(inputs.platform, 'android') && 'android' || 'ios' }} --profile ${{ inputs.platform }} --non-interactive --wait --json > build.json
           jq -e -r '.[0].id' build.json > build-id.txt
       - name: Build local standalone Android artifact
-        if: inputs.platform == 'android-direct' && env.EXPO_TOKEN == ''
+        # Direct APK releases always use the dedicated production keystore
+        # supplied to this job. They must not silently fall back to EAS-managed
+        # credentials when EXPO_TOKEN happens to be present.
+        if: inputs.platform == 'android-direct'
         run: |
           test -n "$ANDROID_RELEASE_KEYSTORE_BASE64"
           test -n "$ANDROID_KEYSTORE_PASSWORD"
@@ -109,14 +112,6 @@ jobs:
           cd android
           ./gradlew :app:assembleRelease --no-daemon --stacktrace
           cp app/build/outputs/apk/release/app-release.apk ../dist/amenallah.apk
-      - name: Download and verify the exact Android APK
-        if: inputs.platform == 'android-direct' && env.EXPO_TOKEN != ''
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          BUILD_ID="$(cat build-id.txt)"
-          mkdir -p dist
-          npx --yes eas-cli@21.2.0 build:download --id "$BUILD_ID" --path ./dist/amenallah.apk
       - name: Verify Android APK and write immutable metadata
         if: inputs.platform == 'android-direct'
         run: |
@@ -139,6 +134,7 @@ jobs:
           printf 'VERSION=%s\nBUILD=%s\nSIGNATURE=%s\nSHA256=%s\nSIZE=%s\nBUILD_ID=%s\n' "$VERSION" "$BUILD" "$SIGNATURE" "$SHA256" "$SIZE" "$BUILD_ID" > dist/metadata.env
           printf '%s  %s\n' "$SHA256" amenallah.apk > dist/amenallah.apk.sha256
       - uses: actions/upload-artifact@v4
+        if: inputs.platform == 'android-direct'
         with:
           name: mobile-${{ inputs.platform }}-${{ github.sha }}
           path: mobile/dist
