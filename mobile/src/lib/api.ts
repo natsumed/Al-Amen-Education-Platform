@@ -13,6 +13,7 @@ import { Platform } from "react-native"
 
 let runtimeOverride: string | null = null
 let refreshAccessToken: (() => Promise<string | null>) | null = null
+const PRODUCTION_API_BASE_URL = "https://amanallahedition.com"
 
 export function setAuthRefreshHandler(handler: (() => Promise<string | null>) | null) {
   refreshAccessToken = handler
@@ -35,15 +36,18 @@ export function getApiBaseUrl(): string {
   if (__DEV__ && runtimeOverride) return runtimeOverride
 
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "")
-  if (fromEnv && !fromEnv.includes("REPLACE_WITH_YOUR_API_HOST")) {
-    return fromEnv
+  const fromConfig = (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)?.apiBaseUrl?.replace(/\/$/, "")
+
+  // A standalone package must never silently fall back to an emulator or a
+  // developer computer.  The static Expo config is a resilience fallback for
+  // release builders, while CI independently asserts the public env value.
+  if (!__DEV__) {
+    if (fromEnv === PRODUCTION_API_BASE_URL || fromConfig === PRODUCTION_API_BASE_URL) return PRODUCTION_API_BASE_URL
+    throw new Error("Configuration de production invalide. Réinstallez la dernière version d’Amenallah.")
   }
 
-  // Release / standalone builds must bake a real URL at build time
-  if (!__DEV__) {
-    throw new Error(
-      "EXPO_PUBLIC_API_URL manquant. Rebuild l'APK avec l'URL HTTPS de l'API (voir mobile/eas.json)."
-    )
+  if (fromEnv && !fromEnv.includes("REPLACE_WITH_YOUR_API_HOST")) {
+    return fromEnv
   }
 
   const hostUri =
