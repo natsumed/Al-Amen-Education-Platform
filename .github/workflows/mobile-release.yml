@@ -180,7 +180,10 @@ jobs:
           curl -fsSI "$URL" | grep -qi 'content-type: application/vnd.android.package-archive'
           curl -fsSI "$URL" | grep -qi 'content-disposition: attachment'
           test "$(curl -fsSL -r 0-31 "$URL" | wc -c)" -eq 32
-          curl -fsS "https://amanallahedition.com/api/mobile/releases/current?platform=ANDROID" | grep -q '"ready":false'
+          # An existing published Android build remains ready while this new
+          # build is deliberately registered as unpublished.  Do not treat
+          # the prior release's readiness as a failure: the publish command
+          # below atomically switches the public release after all checks.
           test "$(curl -fsS "https://amanallahedition.com/api/mobile/releases/current?platform=ANDROID" | jq -r '.android.buildNumber')" != "$BUILD"
           ssh -p "$PORT" -i ~/.ssh/id_ed25519 "$MOBILE_RELEASE_SSH_USER@$MOBILE_RELEASE_SSH_HOST" "cd /opt/amenallah && sudo docker compose --env-file runtime.env -f docker-compose.yml exec -e MOBILE_RELEASE_PUBLISH=true -T prod-app node scripts/register-mobile-release.mjs '/srv/amenallah/releases/android/$VERSION/$BUILD/manifest.json'"
           curl -fsS "https://amanallahedition.com/api/mobile/releases/current?platform=ANDROID" | grep -q "\"buildNumber\":$BUILD"
