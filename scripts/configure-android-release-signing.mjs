@@ -7,14 +7,14 @@ if (!gradlePath) throw new Error("Usage: configure-android-release-signing.mjs <
 let source = await readFile(gradlePath, "utf8")
 if (!source.includes("amenallahRelease")) {
   const signingMarker = "    }\n    buildTypes {"
-  const signingBlock = `    }
-        amenallahRelease {
+  const signingBlock = `        amenallahRelease {
             storeFile file(System.getenv("ANDROID_KEYSTORE_PATH"))
             storeType "PKCS12"
             storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
             keyAlias System.getenv("ANDROID_KEY_ALIAS")
             keyPassword System.getenv("ANDROID_KEY_PASSWORD")
         }
+    }
     buildTypes {`
   if (!source.includes(signingMarker)) throw new Error("Could not locate generated Android signing block")
   source = source.replace(signingMarker, signingBlock)
