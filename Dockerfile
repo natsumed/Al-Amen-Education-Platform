@@ -1,7 +1,7 @@
 FROM node:22-bookworm-slim AS dependencies
 WORKDIR /app
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl \
+  && apt-get install -y --no-install-recommends openssl clamav poppler-utils \
   && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
@@ -19,7 +19,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl \
+  && apt-get install -y --no-install-recommends openssl clamav poppler-utils \
   && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system --gid 1001 nodejs \

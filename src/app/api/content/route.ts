@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       isFree: params.isFree === "true" ? true : params.isFree === "false" ? false : undefined,
     })
 
-    const { grade, subject, contentType, isFree, search, page = 1, limit = 12 } = filters.data || {}
+    const { grade, subject, contentType, language, isFree, search, page = 1, limit = 12 } = filters.data || {}
 
     // Keep filtering portable across the supported PostgreSQL deployment.
     const where: Record<string, unknown> = {
@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
       ...(grade && { grade }),
       ...(subject && { subject }),
       ...(contentType && { contentType }),
+      ...(language && { language }),
       ...(isFree !== undefined && { isFree }),
       ...(search && {
         OR: [
@@ -30,6 +31,8 @@ export async function GET(req: NextRequest) {
           { titleAr: { contains: search } },
           { descriptionFr: { contains: search } },
           { descriptionAr: { contains: search } },
+          { titleEn: { contains: search } },
+          { descriptionEn: { contains: search } },
         ],
       }),
     }

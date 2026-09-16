@@ -48,6 +48,15 @@ services:
       NEXT_PUBLIC_APP_NAME: Amenallah Edition
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: ${GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON:-}
+      GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID:-}
+      GOOGLE_DRIVE_MASTERS_FOLDER_ID: ${GOOGLE_DRIVE_MASTERS_FOLDER_ID:-}
+      GOOGLE_DRIVE_OWNER_EMAIL: ${GOOGLE_DRIVE_OWNER_EMAIL:-}
+      CONTENT_SCAN_REQUIRED: ${CONTENT_SCAN_REQUIRED:-true}
+      CLAMSCAN_BIN: ${CLAMSCAN_BIN:-clamscan}
+      PDFTOTEXT_BIN: ${PDFTOTEXT_BIN:-pdftotext}
+      PDFINFO_BIN: ${PDFINFO_BIN:-pdfinfo}
+      PDFTOPPM_BIN: ${PDFTOPPM_BIN:-pdftoppm}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
       GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-}
@@ -88,6 +97,32 @@ services:
       SMTP_FROM: "${SMTP_FROM:-Amenallah Edition <support@amanallahedition.com>}"
       SMTP_REPLY_TO: ${SMTP_REPLY_TO:-support@amanallahedition.com}
       EMAIL_WORKER_ENABLED: ${EMAIL_WORKER_ENABLED:-true}
+    depends_on:
+      prod-db:
+        condition: service_healthy
+
+  prod-content-worker:
+    image: ${IMAGE_NAME:?IMAGE_NAME is required}:${PROD_IMAGE_TAG:?PROD_IMAGE_TAG is required}
+    restart: unless-stopped
+    command: ["node", "--import", "tsx", "scripts/content-worker.ts"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://platform:${PROD_POSTGRES_PASSWORD}@prod-db:5432/platform?schema=public
+      DATA_ENCRYPTION_KEY: ${PROD_DATA_ENCRYPTION_KEY:?PROD_DATA_ENCRYPTION_KEY is required}
+      GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: ${GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON:-}
+      GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID:-}
+      GOOGLE_DRIVE_MASTERS_FOLDER_ID: ${GOOGLE_DRIVE_MASTERS_FOLDER_ID:-}
+      GOOGLE_DRIVE_OWNER_EMAIL: ${GOOGLE_DRIVE_OWNER_EMAIL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_INGESTION_MODEL: ${OPENAI_INGESTION_MODEL:-gpt-5-mini}
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      CONTENT_WORKER_ENABLED: ${CONTENT_WORKER_ENABLED:-true}
+      CONTENT_SCAN_REQUIRED: ${CONTENT_SCAN_REQUIRED:-true}
+      CLAMSCAN_BIN: ${CLAMSCAN_BIN:-clamscan}
+      PDFTOTEXT_BIN: ${PDFTOTEXT_BIN:-pdftotext}
+      PDFINFO_BIN: ${PDFINFO_BIN:-pdfinfo}
+      PDFTOPPM_BIN: ${PDFTOPPM_BIN:-pdftoppm}
     depends_on:
       prod-db:
         condition: service_healthy
@@ -151,6 +186,15 @@ services:
       NEXT_PUBLIC_APP_NAME: Amenallah Edition (Staging)
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: ${GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON:-}
+      GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID:-}
+      GOOGLE_DRIVE_MASTERS_FOLDER_ID: ${GOOGLE_DRIVE_MASTERS_FOLDER_ID:-}
+      GOOGLE_DRIVE_OWNER_EMAIL: ${GOOGLE_DRIVE_OWNER_EMAIL:-}
+      CONTENT_SCAN_REQUIRED: ${CONTENT_SCAN_REQUIRED:-true}
+      CLAMSCAN_BIN: ${CLAMSCAN_BIN:-clamscan}
+      PDFTOTEXT_BIN: ${PDFTOTEXT_BIN:-pdftotext}
+      PDFINFO_BIN: ${PDFINFO_BIN:-pdfinfo}
+      PDFTOPPM_BIN: ${PDFTOPPM_BIN:-pdftoppm}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
       GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-}
@@ -189,6 +233,32 @@ services:
       SMTP_FROM: "${SMTP_FROM:-Amenallah Edition <support@amanallahedition.com>}"
       SMTP_REPLY_TO: ${SMTP_REPLY_TO:-support@amanallahedition.com}
       EMAIL_WORKER_ENABLED: ${EMAIL_WORKER_ENABLED:-true}
+    depends_on:
+      staging-db:
+        condition: service_healthy
+
+  staging-content-worker:
+    image: ${IMAGE_NAME:?IMAGE_NAME is required}:${STAGING_IMAGE_TAG:?STAGING_IMAGE_TAG is required}
+    restart: unless-stopped
+    command: ["node", "--import", "tsx", "scripts/content-worker.ts"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://platform:${STAGING_POSTGRES_PASSWORD}@staging-db:5432/platform?schema=public
+      DATA_ENCRYPTION_KEY: ${STAGING_DATA_ENCRYPTION_KEY:?STAGING_DATA_ENCRYPTION_KEY is required}
+      GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: ${GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON:-}
+      GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID:-}
+      GOOGLE_DRIVE_MASTERS_FOLDER_ID: ${GOOGLE_DRIVE_MASTERS_FOLDER_ID:-}
+      GOOGLE_DRIVE_OWNER_EMAIL: ${GOOGLE_DRIVE_OWNER_EMAIL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_INGESTION_MODEL: ${OPENAI_INGESTION_MODEL:-gpt-5-mini}
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      CONTENT_WORKER_ENABLED: ${CONTENT_WORKER_ENABLED:-true}
+      CONTENT_SCAN_REQUIRED: ${CONTENT_SCAN_REQUIRED:-true}
+      CLAMSCAN_BIN: ${CLAMSCAN_BIN:-clamscan}
+      PDFTOTEXT_BIN: ${PDFTOTEXT_BIN:-pdftotext}
+      PDFINFO_BIN: ${PDFINFO_BIN:-pdfinfo}
+      PDFTOPPM_BIN: ${PDFTOPPM_BIN:-pdftoppm}
     depends_on:
       staging-db:
         condition: service_healthy

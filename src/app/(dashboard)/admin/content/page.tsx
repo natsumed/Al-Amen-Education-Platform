@@ -4,9 +4,6 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ContentFilters } from "@/components/content/content-filters"
@@ -19,13 +16,17 @@ export default function AdminContentPage() {
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({})
   const [jobs, setJobs] = useState<any[]>([])
-  const [sourceRef, setSourceRef] = useState("")
-  const [instructions, setInstructions] = useState("")
+  const [intakes, setIntakes] = useState<any[]>([])
   const [submittingAi, setSubmittingAi] = useState(false)
 
   const fetchJobs = async () => {
     const res = await fetch("/api/admin/content/ingestions", { cache: "no-store" })
     if (res.ok) setJobs((await res.json()).jobs || [])
+  }
+
+  const fetchIntakes = async () => {
+    const res = await fetch("/api/admin/content/intakes", { cache: "no-store" })
+    if (res.ok) setIntakes((await res.json()).intakes || [])
   }
 
   const fetchContent = async (f: Record<string, string> = {}) => {
@@ -38,27 +39,20 @@ export default function AdminContentPage() {
   }
 
   useEffect(() => { fetchContent(filters as any) }, [filters])
-  useEffect(() => { void fetchJobs() }, [])
+  useEffect(() => { void fetchJobs(); void fetchIntakes() }, [])
 
   const createAiDraft = async () => {
-    if (!sourceRef.trim()) return
     setSubmittingAi(true)
     try {
-      const res = await fetch("/api/admin/content/ingestions", {
+      const res = await fetch("/api/admin/content/intakes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceType: sourceRef.includes("/folders/") ? "DRIVE_FOLDER" : "DRIVE_FILE",
-          sourceRef,
-          instructions,
-        }),
+        body: JSON.stringify({ sourceType: "DRIVE_ROOT" }),
       })
       const data = await res.json()
       if (!res.ok && res.status !== 202) throw new Error(data.error || "Erreur AI")
-      toast.success(res.status === 202 ? "Tâche créée — configuration AI requise" : "Proposition AI prête à valider")
-      setSourceRef("")
-      setInstructions("")
-      await fetchJobs()
+      toast.success(`Bibliothèque analysée: ${data.created || 0} nouveaux fichiers catalogués`)
+      await fetchIntakes()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur AI")
     } finally {
@@ -66,12 +60,26 @@ export default function AdminContentPage() {
     }
   }
 
+  const intakeAction = async (id: string, action: "approve" | "retry" | "reject") => {
+    const reason = action === "reject" ? window.prompt("Motif du rejet (obligatoire)") : null
+    if (action === "reject" && !reason?.trim()) return
+    const res = await fetch(`/api/admin/content/intakes/${id}/${action}`, {
+      method: "POST",
+      headers: action === "reject" ? { "Content-Type": "application/json" } : undefined,
+      body: action === "reject" ? JSON.stringify({ reason }) : undefined,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return toast.error(data.error || "Action impossible")
+    toast.success(action === "approve" ? "Brouillon sécurisé créé" : action === "retry" ? "Intake remis en traitement" : "Intake rejeté")
+    await fetchIntakes()
+  }
+
   const approveJob = async (id: string) => {
     const res = await fetch(`/api/admin/content/ingestions/${id}/approve`, { method: "POST" })
     const data = await res.json()
     if (!res.ok) return toast.error(data.error || "Approbation impossible")
     toast.success("Brouillon approuvé et placé dans la file de traitement sécurisé")
-    await Promise.all([fetchJobs(), fetchContent(filters as any)])
+    await Promise.all([fetchJobs(), fetchIntakes(), fetchContent(filters as any)])
   }
 
   const handleDelete = async (id: string) => {
@@ -91,21 +99,30 @@ export default function AdminContentPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" />Assistant d&apos;ingestion sécurisé</CardTitle>
           <CardDescription>
-            Ajoutez un lien Drive privé. L&apos;AI prépare un brouillon bilingue; rien n&apos;est publié sans votre validation et sans traitement DRM.
+            Le worker scanne uniquement le dossier Drive privé 01_Masters configuré sur le serveur. L&apos;IA prépare des métadonnées en arabe, français et anglais; rien n&apos;est publié sans validation humaine et traitement sécurisé.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="ai-source">Lien Google Drive privé</Label>
-            <Input id="ai-source" value={sourceRef} onChange={(e) => setSourceRef(e.target.value)} placeholder="https://drive.google.com/file/d/..." />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="ai-instructions">Instructions facultatives</Label>
-            <Textarea id="ai-instructions" value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Niveau, matière ou contexte utile..." maxLength={2000} />
-          </div>
-          <Button onClick={createAiDraft} disabled={submittingAi || !sourceRef.trim()}>
-            <Sparkles className="h-4 w-4 mr-2" />{submittingAi ? "Analyse..." : "Créer la proposition"}
+          <Button onClick={createAiDraft} disabled={submittingAi}>
+            <Sparkles className="h-4 w-4 mr-2" />{submittingAi ? "Analyse..." : "Scanner la bibliothèque privée"}
           </Button>
+          {intakes.length > 0 && (
+            <div className="space-y-2 pt-2">
+              {intakes.slice(0, 12).map((intake) => (
+                <div key={intake.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+                  <div>
+                    <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /><span className="font-medium">{intake.sourceFileName}</span><Badge variant="secondary">{intake.status}</Badge></div>
+                    <p className="text-xs text-muted-foreground mt-1">{intake.titleAr || intake.titleFr || intake.titleEn || "Métadonnées à compléter"} · {intake.category || "REVIEW_REQUIRED"} · {intake.language || "MULTI"} · {intake.audience || "INTERNAL"}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(intake.status === "REVIEW_REQUIRED") && <Button size="sm" onClick={() => intakeAction(intake.id, "approve")}>Approuver</Button>}
+                    {(intake.status === "FAILED" || intake.status === "WAITING_FOR_SCAN") && <Button size="sm" variant="outline" onClick={() => intakeAction(intake.id, "retry")}>Réessayer</Button>}
+                    {(intake.status === "REVIEW_REQUIRED" || intake.status === "DUPLICATE_REVIEW") && <Button size="sm" variant="ghost" onClick={() => intakeAction(intake.id, "reject")}>Rejeter</Button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {jobs.length > 0 && (
             <div className="space-y-2 pt-2">
               {jobs.slice(0, 8).map((job) => (

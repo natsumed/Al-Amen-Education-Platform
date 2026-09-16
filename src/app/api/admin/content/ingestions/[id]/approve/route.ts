@@ -13,6 +13,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   const proposal = contentProposalSchema.safeParse(job.proposal)
   if (!proposal.success) return NextResponse.json({ error: "Proposition AI invalide" }, { status: 422 })
+  const grade = proposal.data.grade
+  if (!grade) return NextResponse.json({ error: "Une année scolaire doit être confirmée avant publication" }, { status: 422 })
 
   const kind = proposal.data.contentType === "BOOK" ? "DOCUMENT" : "VIDEO"
   const result = await prisma.$transaction(async (tx) => {
@@ -20,11 +22,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: {
         titleAr: proposal.data.titleAr,
         titleFr: proposal.data.titleFr,
+        titleEn: proposal.data.titleEn,
         descriptionAr: proposal.data.descriptionAr,
         descriptionFr: proposal.data.descriptionFr,
-        grade: proposal.data.grade,
+        descriptionEn: proposal.data.descriptionEn,
+        grade,
         subject: proposal.data.subject,
         contentType: proposal.data.contentType,
+        language: proposal.data.language,
+        audience: proposal.data.audience,
+        collectionKey: proposal.data.collectionKey,
+        storyKey: proposal.data.storyKey,
+        editionLabel: proposal.data.editionLabel,
         isFree: false,
         status: "DRAFT",
         uploadedById: user.id,

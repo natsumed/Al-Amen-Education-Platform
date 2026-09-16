@@ -115,11 +115,18 @@ model Content {
   id            String   @id @default(uuid())
   titleAr       String
   titleFr       String
+  titleEn       String?
   descriptionAr String?
   descriptionFr String?
+  descriptionEn String?
   grade         String
   subject       String
   contentType   String
+  language      String   @default("MULTI")
+  audience      String   @default("LEARNER")
+  collectionKey String?
+  storyKey      String?
+  editionLabel  String?
   isFree        Boolean  @default(true)
   price         Float?
   thumbnailUrl  String?
@@ -218,6 +225,10 @@ model ContentAsset {
   kind               String
   sourceProvider     String   @default("DRIVE")
   sourceRefEncrypted String?
+  sourceFileIdHash   String?
+  sourceFileName     String?
+  locale             String?
+  assetRole         String   @default("PRIMARY")
   deliveryProvider   String?
   deliveryAssetId    String?
   status             String   @default("PENDING")
@@ -235,6 +246,49 @@ model ContentAsset {
 
   @@index([contentId, kind])
   @@index([status])
+  @@index([sourceFileIdHash])
+}
+
+model ContentIntake {
+  id                 String    @id @default(uuid())
+  sourceType         String
+  sourceProvider     String    @default("DRIVE")
+  sourceRefEncrypted String?
+  sourceFileIdHash   String    @unique
+  sourceFileName     String
+  sourceFolder       String?
+  sourceEmailRef     String?
+  mimeType           String?
+  sizeBytes          BigInt?
+  checksumSha256     String?
+  language           String?
+  category           String?
+  titleAr            String?
+  titleFr            String?
+  titleEn            String?
+  grade              String?
+  subject            String?
+  audience           String?
+  collectionKey      String?
+  storyKey           String?
+  editionLabel       String?
+  coverRelationship  String?
+  ownership          String?
+  sharingState       String?
+  duplicateOfId      String?
+  status             String    @default("RECEIVED")
+  aiProposal         Json?
+  reviewNotes        String?
+  errorCode          String?
+  errorMessage       String?
+  reviewedById       String?
+  approvedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([category, language])
+  @@index([storyKey])
 }
 
 model IngestionJob {

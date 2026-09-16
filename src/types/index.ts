@@ -11,6 +11,9 @@ export type PaymentProvider = "CLICTOPAY" | "MANUAL"
 export type PaymentStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED"
 export type ParentLinkStatus = "PENDING" | "ACCEPTED" | "REJECTED"
 export type Language = "ar" | "fr"
+export type ContentLanguage = "AR" | "FR" | "EN" | "MULTI"
+export type ContentAudience = "LEARNER" | "TEACHER" | "INTERNAL"
+export type ContentCategory = "STORYBOOK" | "STUDENT_WORKBOOK" | "TEACHER_RESOURCE" | "INTERNAL_PRODUCTION" | "REVIEW_REQUIRED"
 
 export interface User {
   id: string
@@ -55,11 +58,18 @@ export interface Content {
   id: string
   titleAr: string
   titleFr: string
+  titleEn?: string | null
   descriptionAr?: string | null
   descriptionFr?: string | null
+  descriptionEn?: string | null
   grade: Grade
   subject: Subject
   contentType: ContentType
+  language: ContentLanguage
+  audience: ContentAudience
+  collectionKey?: string | null
+  storyKey?: string | null
+  editionLabel?: string | null
   isFree: boolean
   price?: number | null
   thumbnailUrl?: string | null
@@ -138,6 +148,7 @@ export interface ContentFilters {
   grade?: Grade
   subject?: Subject
   contentType?: ContentType
+  language?: ContentLanguage
   isFree?: boolean
   search?: string
   page?: number
