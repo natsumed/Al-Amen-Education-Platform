@@ -1,12 +1,8 @@
 import { describe, it, expect } from "vitest"
 import { getPlanPrice } from "../utils"
 
-/**
- * Manual activation must create a SUCCESS Payment with provider MANUAL
- * and amount matching the plan price (see manualActivateSubscription).
- */
-describe("manual activation payment shape", () => {
-  it("maps each plan to a positive MANUAL payment amount", () => {
+describe("payment catalogue shape", () => {
+  it("maps each plan to a positive integer amount in millimes", () => {
     const plans = [
       "STUDENT_MONTHLY",
       "STUDENT_YEARLY",
@@ -16,15 +12,16 @@ describe("manual activation payment shape", () => {
 
     for (const plan of plans) {
       const payment = {
-        provider: "MANUAL" as const,
-        status: "SUCCESS" as const,
-        amount: getPlanPrice(plan),
+        provider: "MANUAL_CASH" as const,
+        status: "SUCCEEDED" as const,
+        amountMillis: Math.round(getPlanPrice(plan) * 1_000),
         itemType: "SUBSCRIPTION",
         itemId: plan,
       }
-      expect(payment.provider).toBe("MANUAL")
-      expect(payment.status).toBe("SUCCESS")
-      expect(payment.amount).toBeGreaterThan(0)
+      expect(payment.provider).toBe("MANUAL_CASH")
+      expect(payment.status).toBe("SUCCEEDED")
+      expect(Number.isSafeInteger(payment.amountMillis)).toBe(true)
+      expect(payment.amountMillis).toBeGreaterThan(0)
       expect(payment.itemId).toBe(plan)
     }
   })

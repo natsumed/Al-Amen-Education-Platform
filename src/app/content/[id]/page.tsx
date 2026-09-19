@@ -551,11 +551,20 @@ export default function ContentDetailPage() {
                 </div>
 
                 {!canAccess && !content.isFree && (
-                  <Link href="/pricing" className="block">
-                    <Button className="w-full" size="lg">
-                      {isAr ? "اشترك الآن" : "S'abonner"}
-                    </Button>
-                  </Link>
+                  <div className="space-y-2">
+                    {(content.priceMillis || content.price) && (
+                      <Link href={`/checkout?content=${encodeURIComponent(content.id)}`} className="block">
+                        <Button className="w-full" size="lg">
+                          {isAr ? "شراء المحتوى نهائياً" : "Acheter définitivement"}
+                        </Button>
+                      </Link>
+                    )}
+                    <Link href="/pricing" className="block">
+                      <Button className="w-full" size="lg" variant="outline">
+                        {isAr ? "الاشتراك في كامل المنصة" : "S'abonner à toute la plateforme"}
+                      </Button>
+                    </Link>
+                  </div>
                 )}
 
                 {canAccess && content.isFree && (

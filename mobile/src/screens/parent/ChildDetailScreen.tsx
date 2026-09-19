@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from "react"
-import { View, Text, StyleSheet, ActivityIndicator, Linking } from "react-native"
+import { Alert, View, Text, StyleSheet, ActivityIndicator, Linking } from "react-native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import { useFocusEffect } from "@react-navigation/native"
-import { api, getApiBaseUrl } from "../../lib/api"
+import { api, type PaymentMethod, type PaymentProvider } from "../../lib/api"
 import { useAuth } from "../../lib/auth-context"
 import { contentTitle, t } from "../../lib/i18n"
 import { Screen } from "../../components/Screen"
@@ -25,11 +25,15 @@ export function ChildDetailScreen({ route, navigation }: Props) {
   const { token, language } = useAuth()
   const [loading, setLoading] = useState(true)
   const [child, setChild] = useState<{
+    id: string
     fullName: string
     email: string
     publicId?: string
     progress: ChildProgress[]
   } | null>(null)
+  const [methods, setMethods] = useState<PaymentMethod[]>([])
+  const [payingPlan, setPayingPlan] = useState<string | null>(null)
+  const [paymentMessage, setPaymentMessage] = useState("")
 
   const load = useCallback(async () => {
     if (!token) return
@@ -38,6 +42,7 @@ export function ChildDetailScreen({ route, navigation }: Props) {
       const link = (data.links || []).find((item) => item.id === linkId)
       if (link) {
         setChild({
+          id: link.student.id,
           fullName: link.student.fullName,
           email: link.student.email,
           publicId: link.student.publicId,
@@ -45,6 +50,7 @@ export function ChildDetailScreen({ route, navigation }: Props) {
         })
         navigation.setOptions({ title: link.student.fullName })
       }
+      void api.paymentMethods().then((result) => setMethods(result.methods.filter((method) => method.available))).catch(() => {})
     } catch {
       /* ignore */
     } finally {
@@ -74,12 +80,43 @@ export function ChildDetailScreen({ route, navigation }: Props) {
     )
   }
 
-  const openPay = () => {
+  const createPayment = async (plan: "STUDENT_MONTHLY" | "STUDENT_YEARLY", provider: PaymentProvider) => {
+    if (!token) return
+    setPayingPlan(plan)
+    setPaymentMessage("")
     try {
-      void Linking.openURL(`${getApiBaseUrl()}/parent/pay`)
-    } catch {
-      /* ignore */
+      const payment = await api.createPayment(token, {
+        productKind: "SUBSCRIPTION",
+        productId: plan,
+        provider,
+        beneficiaryId: child.id,
+      }, `mobile-parent-${child.id}-${plan}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      if (payment.redirectUrl) await Linking.openURL(payment.redirectUrl)
+      setPaymentMessage(payment.redirectUrl
+        ? (language === "ar" ? "تحقق من حالة الدفع عند العودة." : "Le paiement sera vérifié à votre retour.")
+        : (language === "ar" ? `تم تسجيل الطلب: ${payment.merchantOrderRef}` : `Demande enregistrée : ${payment.merchantOrderRef}`))
+    } catch (paymentError) {
+      setPaymentMessage(paymentError instanceof Error ? paymentError.message : "Payment error")
+    } finally {
+      setPayingPlan(null)
     }
+  }
+
+  const choosePayment = (plan: "STUDENT_MONTHLY" | "STUDENT_YEARLY") => {
+    const buttons: Array<{ text: string; style?: "cancel"; onPress?: () => void }> = [
+      { text: language === "ar" ? "نقداً" : "Espèces", onPress: () => void createPayment(plan, "MANUAL_CASH") },
+    ]
+    if (methods.some((method) => method.provider === "CLICTOPAY")) {
+      buttons.push({ text: "ClicToPay", onPress: () => void createPayment(plan, "CLICTOPAY") })
+    }
+    buttons.push({ text: language === "ar" ? "إلغاء" : "Annuler", style: "cancel" })
+    Alert.alert(
+      language === "ar" ? "الدفع للطفل" : "Paiement pour l’enfant",
+      language === "ar"
+        ? "بالمتابعة، توافق على الشروط وسياسة الخصوصية والاسترجاع."
+        : "En continuant, vous acceptez les conditions, la confidentialité et la politique de remboursement.",
+      buttons
+    )
   }
 
   return (
@@ -90,7 +127,21 @@ export function ChildDetailScreen({ route, navigation }: Props) {
         {child.publicId ? <Text style={styles.pid}>#{child.publicId}</Text> : null}
       </View>
 
-      <PrimaryButton label={t("payOnWeb", language)} onPress={openPay} style={styles.pay} />
+      <Text style={styles.section}>{language === "ar" ? "اشتراك الطفل" : "Abonnement de l’enfant"}</Text>
+      <PrimaryButton
+        label={language === "ar" ? "شهري — 15.000 د.ت" : "Mensuel — 15.000 TND"}
+        onPress={() => choosePayment("STUDENT_MONTHLY")}
+        loading={payingPlan === "STUDENT_MONTHLY"}
+        style={styles.pay}
+      />
+      <PrimaryButton
+        label={language === "ar" ? "سنوي — 120.000 د.ت" : "Annuel — 120.000 TND"}
+        onPress={() => choosePayment("STUDENT_YEARLY")}
+        loading={payingPlan === "STUDENT_YEARLY"}
+        variant="outline"
+        style={styles.paySecondary}
+      />
+      {paymentMessage ? <Text style={styles.message}>{paymentMessage}</Text> : null}
 
       <Text style={styles.section}>{t("childProgress", language)}</Text>
       {child.progress.length === 0 ? (
@@ -128,6 +179,8 @@ const styles = StyleSheet.create({
   email: { ...typography.caption, color: colors.muted, marginTop: spacing.xs },
   pid: { ...typography.caption, color: colors.primary, marginTop: spacing.sm },
   pay: { marginTop: spacing.lg },
+  paySecondary: { marginTop: spacing.sm },
+  message: { ...typography.caption, color: colors.primary, marginTop: spacing.md },
   section: { ...typography.h2, color: colors.text, marginTop: spacing.xl, marginBottom: spacing.md },
   progressCard: {
     backgroundColor: colors.surface,

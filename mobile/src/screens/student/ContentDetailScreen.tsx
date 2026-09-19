@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { View, Text, StyleSheet, ActivityIndicator, Linking, Pressable, ScrollView, Image } from "react-native"
+import { Alert, View, Text, StyleSheet, ActivityIndicator, Linking, Pressable, ScrollView, Image } from "react-native"
 import type { NativeStackScreenProps } from "@react-navigation/native-stack"
 import * as ScreenCapture from "expo-screen-capture"
 import { VdoPlayerView } from "vdocipher-rn-bridge"
 import { Ionicons } from "@expo/vector-icons"
-import { api, getApiBaseUrl, type ContentItem, type DocumentManifest } from "../../lib/api"
+import { api, getApiBaseUrl, type ContentItem, type DocumentManifest, type PaymentMethod, type PaymentProvider } from "../../lib/api"
 import { submitProgress } from "../../lib/offline-queue"
 import { useAuth } from "../../lib/auth-context"
 import { contentDescription, contentTitle, t } from "../../lib/i18n"
@@ -34,6 +34,9 @@ export function ContentDetailScreen({ route, navigation }: Props) {
   const [reviewSent, setReviewSent] = useState(false)
   const [related, setRelated] = useState<ContentItem[]>([])
   const [progressPct, setProgressPct] = useState(0)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [buying, setBuying] = useState(false)
+  const [paymentMessage, setPaymentMessage] = useState("")
   const lastSent = useRef(0)
 
   const sendProgress = useCallback(
@@ -53,6 +56,9 @@ export function ContentDetailScreen({ route, navigation }: Props) {
       setPlaybackError("")
       const data = await api.getContent(id, token)
       setContent(data)
+      if (token && !data.isFree) {
+        void api.paymentMethods().then((result) => setPaymentMethods(result.methods.filter((method) => method.available))).catch(() => {})
+      }
       navigation.setOptions({ title: contentTitle(data, language) })
       void api
         .listContent({ grade: data.grade, subject: data.subject, limit: 6 }, token)
@@ -105,6 +111,50 @@ export function ContentDetailScreen({ route, navigation }: Props) {
     else void Linking.openURL(`${getApiBaseUrl()}/pricing`)
   }
 
+  const startPurchase = async (provider: PaymentProvider) => {
+    if (!token) return
+    setBuying(true)
+    setPaymentMessage("")
+    try {
+      const payment = await api.createPayment(token, {
+        productKind: "CONTENT",
+        productId: id,
+        provider,
+      }, `mobile-content-${id}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      if (payment.redirectUrl) {
+        await Linking.openURL(payment.redirectUrl)
+        setPaymentMessage(language === "ar" ? "تحقق من حالة الدفع عند العودة." : "Le statut sera vérifié à votre retour.")
+      } else {
+        setPaymentMessage(language === "ar"
+          ? `تم تسجيل طلب الدفع نقداً. المرجع: ${payment.merchantOrderRef}`
+          : `Demande en espèces enregistrée. Référence : ${payment.merchantOrderRef}`)
+      }
+    } catch (purchaseError) {
+      setPaymentMessage(purchaseError instanceof Error ? purchaseError.message : "Payment error")
+    } finally {
+      setBuying(false)
+    }
+  }
+
+  const choosePurchaseMethod = () => {
+    const clicAvailable = paymentMethods.some((method) => method.provider === "CLICTOPAY")
+    const buttons: Array<{ text: string; style?: "cancel"; onPress?: () => void }> = [
+      {
+        text: language === "ar" ? "نقداً" : "Espèces",
+        onPress: () => void startPurchase("MANUAL_CASH"),
+      },
+    ]
+    if (clicAvailable) buttons.push({ text: "ClicToPay", onPress: () => void startPurchase("CLICTOPAY") })
+    buttons.push({ text: language === "ar" ? "إلغاء" : "Annuler", style: "cancel" })
+    Alert.alert(
+      language === "ar" ? "شراء دائم" : "Achat permanent",
+      language === "ar"
+        ? "بالمتابعة، توافق على الشروط وسياسة الخصوصية والاسترجاع."
+        : "En continuant, vous acceptez les conditions, la confidentialité et la politique de remboursement.",
+      buttons
+    )
+  }
+
   if (loading) {
     return (
       <Screen>
@@ -152,6 +202,18 @@ export function ContentDetailScreen({ route, navigation }: Props) {
           </View>
           <Text style={styles.lockText}>{t("locked", language)}</Text>
           <PrimaryButton label={t("subscribe", language)} onPress={openSubscription} style={styles.subscribe} />
+          {(content.priceMillis || content.price) ? (
+            <PrimaryButton
+              label={language === "ar"
+                ? `شراء دائم — ${((content.priceMillis || Math.round((content.price || 0) * 1000)) / 1000).toFixed(3)} د.ت`
+                : `Acheter définitivement — ${((content.priceMillis || Math.round((content.price || 0) * 1000)) / 1000).toFixed(3)} TND`}
+              variant="outline"
+              onPress={choosePurchaseMethod}
+              loading={buying}
+              style={styles.subscribe}
+            />
+          ) : null}
+          {paymentMessage ? <Text style={styles.paymentMessage}>{paymentMessage}</Text> : null}
         </View>
       ) : null}
 
@@ -279,6 +341,7 @@ const styles = StyleSheet.create({
   },
   lockText: { color: colors.warning, ...typography.bodyBold, textAlign: "center" },
   subscribe: { marginTop: spacing.md, alignSelf: "stretch" },
+  paymentMessage: { ...typography.caption, color: colors.primary, textAlign: "center", marginTop: spacing.md },
   player: { height: 240, borderRadius: radius.lg, overflow: "hidden", backgroundColor: "#000", marginBottom: spacing.md },
   nativePlayer: { flex: 1, width: "100%", backgroundColor: "#000" },
   webLoader: { flex: 1 },

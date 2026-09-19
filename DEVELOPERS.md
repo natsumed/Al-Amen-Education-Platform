@@ -149,14 +149,10 @@ Tu travailles sur des branches `feature/…` (API). Ton rôle : **API, base de d
 ### Ce que tu peux développer
 
 #### Priorité Haute
-1. **Intégration paiement Konnect** — Passer du stub à la vraie API :
-   - `src/lib/payment/konnect.ts` — Implémenter l'API REST Konnect
-   - Gérer les webhooks de confirmation
-   - Créer `src/app/api/payments/webhook/konnect/route.ts`
-
-2. **Intégration paiement Flouci** — Paiement par wallet mobile :
-   - `src/lib/payment/flouci.ts` — API Flouci (QR code, callback)
-   - Créer `src/app/api/payments/webhook/flouci/route.ts`
+1. **Certification SMT ClicToPay** — Le domaine, les états financiers,
+   l’idempotence, le rapprochement et le fournisseur fail-closed sont en place.
+   Mapper uniquement le kit officiel SMT dans `src/lib/payment/clictopay.ts`,
+   exécuter la suite sandbox, puis activer le garde de certification.
 
 3. **Vérification email** — Valider les emails à l'inscription :
    - Créer `src/app/api/auth/verify-email/route.ts`
@@ -234,7 +230,7 @@ Tu travailles sur des branches `feature/…` (API). Ton rôle : **API, base de d
 | `src/lib/auth-utils.ts` | Fonctions d'authentification (getSession, requireAdmin...) |
 | `src/lib/access-control.ts` | Contrôle d'accès au contenu (free/paid/subscription) |
 | `src/lib/validations.ts` | Schémas Zod pour toutes les entrées |
-| `src/lib/payment/` | Abstraction paiement (Konnect, Flouci, Manuel) |
+| `src/lib/payment/` | Domaine paiement (ClicToPay SMT, espèces, droits d’accès) |
 | `src/lib/email.ts` | Emails transactionnels (Resend) |
 | `src/lib/storage.ts` | Upload de fichiers (Supabase Storage) |
 | `src/lib/prisma.ts` | Client Prisma singleton |
@@ -396,6 +392,6 @@ Settings → Branches → Branch protection rule sur `main` :
 | Phase | Frontend | Backend |
 |-------|----------|---------|
 | **Actuelle** | ✅ Landing, auth, browse, content detail, chatbot UI | ✅ Auth, CRUD content, access control, seed, agent tools |
-| **Phase 2** | Checkout UI, reusable players, notifications | Paiements réels (Konnect/Flouci), upload fichiers |
+| **Phase 2** | Checkout UI, players, notifications | Certification SMT ClicToPay, upload fichiers |
 | **Phase 3** | Gamification, recherche avancée, mode sombre | Tests E2E et sécurité avancée |
 | **Phase 4** | PWA, accessibilité, iOS | Recherche full-text, analytiques, CD production |

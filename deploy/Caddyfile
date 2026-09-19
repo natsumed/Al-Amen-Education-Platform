@@ -34,9 +34,6 @@ www.{$APP_DOMAIN} {
 }
 
 {$STAGING_DOMAIN} {
-  basic_auth {
-    {$STAGING_BASIC_AUTH_USER} {$STAGING_BASIC_AUTH_HASH}
-  }
   encode zstd gzip
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -46,9 +43,22 @@ www.{$APP_DOMAIN} {
     Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)"
     -Server
   }
-  reverse_proxy staging-app:3000 {
-    header_up Host {host}
-    header_up X-Forwarded-Host {host}
-    header_up X-Forwarded-Proto https
+  @paymentCallback path /api/payments/clictopay/notify
+  handle @paymentCallback {
+    reverse_proxy staging-app:3000 {
+      header_up Host {host}
+      header_up X-Forwarded-Host {host}
+      header_up X-Forwarded-Proto https
+    }
+  }
+  handle {
+    basic_auth {
+      {$STAGING_BASIC_AUTH_USER} {$STAGING_BASIC_AUTH_HASH}
+    }
+    reverse_proxy staging-app:3000 {
+      header_up Host {host}
+      header_up X-Forwarded-Host {host}
+      header_up X-Forwarded-Proto https
+    }
   }
 }

@@ -58,8 +58,10 @@ Keep these settings disabled until their acceptance tests pass:
   VdoCipher or the protected document store.
 - `MOBILE_ATTESTATION_ENFORCED`: Play Integrity and App Attest are configured on
   signed store builds.
-- `CLICTOPAY_ENABLED`: SMT supplies its current official kit, sandbox credentials,
-  and certification approval, and callback verification is implemented.
+- `CLICTOPAY_MODE` remains `disabled` and `CLICTOPAY_ADAPTER_CERTIFIED` remains
+  `false` until SMT supplies its current kit, callback authentication and
+  status-query mapping are implemented, the sandbox suite passes, and SMT
+  grants certification approval. Credentials alone never expose the method.
 - Mobile publication: both signed Android and iOS rows exist and install/DRM tests
   pass. The website intentionally advertises no download before then.
 

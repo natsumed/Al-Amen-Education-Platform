@@ -44,7 +44,7 @@ export default function ManualActivationPage() {
       })
       const d = await res.json()
       if (!res.ok) throw new Error(typeof d.error === "string" ? d.error : "Erreur")
-      toast.success("Abonnement activé — visible dans Paiements")
+      toast.success("Accès offert — enregistré séparément des revenus")
       setSuccess({
         publicId: d.user?.publicId,
         name: d.user?.fullName,
@@ -66,7 +66,7 @@ export default function ManualActivationPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Activation manuelle</h1>
           <p className="text-muted-foreground mt-1">
-            Active un abonnement et crée un paiement MANUAL (SUCCESS) dans l&apos;historique.
+            Offre un accès administrateur sans créer de faux revenu de paiement.
           </p>
         </div>
         <Link href="/admin/payments" className="text-sm text-primary hover:underline">

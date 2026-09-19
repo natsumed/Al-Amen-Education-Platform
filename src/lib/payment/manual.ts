@@ -1,155 +1,84 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "../prisma"
-import {
-  calculateSubscriptionEnd,
-  getPlanDurationDays,
-  getPlanPrice,
-} from "../utils"
-import { sendSubscriptionConfirmation } from "../email"
 import { resolveUserByIdentifier } from "../user-id"
+import { sendSubscriptionConfirmation } from "../email"
+import { getPaidSubscriptionPlan, type PaidSubscriptionPlanId } from "./catalog"
+import { approveManualCashPayment, rejectManualCashPayment } from "./service"
 
 export interface ManualActivationInput {
-  /** UUID, 8-digit publicId, or email */
   targetUserId: string
-  plan: "STUDENT_MONTHLY" | "STUDENT_YEARLY" | "TEACHER_MONTHLY" | "TEACHER_YEARLY"
+  plan: PaidSubscriptionPlanId
   durationDays: number
   reason?: string
-  /** When approving an existing PENDING payment, skip creating another Payment row */
+  /** @deprecated Complimentary grants never create fake revenue records. */
   skipPaymentRecord?: boolean
 }
 
-export async function manualActivateSubscription(
-  adminId: string,
-  input: ManualActivationInput
-) {
-  const { plan, durationDays, reason, skipPaymentRecord } = input
+function addDays(value: Date, days: number) {
+  return new Date(value.getTime() + days * 86_400_000)
+}
 
+/** Complimentary access is an ADMIN_GRANT and is deliberately excluded from revenue. */
+export async function manualActivateSubscription(adminId: string, input: ManualActivationInput) {
   const targetUser = await resolveUserByIdentifier(input.targetUserId)
-  if (!targetUser) {
-    throw new Error(
-      "Utilisateur introuvable. Utilisez l'ID à 8 chiffres, l'email, ou l'UUID."
-    )
-  }
+  if (!targetUser) throw new Error("Utilisateur introuvable. Utilisez l'ID à 8 chiffres, l'email, ou l'UUID.")
+  const plan = getPaidSubscriptionPlan(input.plan)
+  if (targetUser.role !== plan.role) throw new Error("Le plan ne correspond pas au rôle de l'utilisateur")
+  const durationDays = Math.max(1, Math.min(365, input.durationDays))
 
-  const startDate = new Date()
-  const endDate = calculateSubscriptionEnd(durationDays, startDate)
-
-  const log = await prisma.manualActivationLog.create({
-    data: {
-      adminId,
-      targetUserId: targetUser.id,
-      plan,
-      durationDays,
-      reason,
-    },
-  })
-
-  const existingSub = await prisma.subscription.findFirst({
-    where: { userId: targetUser.id },
-    orderBy: { createdAt: "desc" },
-  })
-
-  let subscription
-  if (existingSub) {
-    subscription = await prisma.subscription.update({
-      where: { id: existingSub.id },
-      data: { plan, status: "ACTIVE", endDate, startDate, autoRenew: false },
+  const result = await prisma.$transaction(async (tx) => {
+    const now = new Date()
+    const current = await tx.subscription.findFirst({
+      where: { userId: targetUser.id, status: "ACTIVE" },
+      orderBy: { endDate: "desc" },
     })
-  } else {
-    subscription = await prisma.subscription.create({
+    const latestGrant = await tx.subscriptionGrant.findFirst({
+      where: { userId: targetUser.id, status: "ACTIVE" },
+      orderBy: { endsAt: "desc" },
+    })
+    const startsAt = new Date(Math.max(now.getTime(), current?.endDate.getTime() || 0, latestGrant?.endsAt.getTime() || 0))
+    const endsAt = addDays(startsAt, durationDays)
+    const log = await tx.manualActivationLog.create({
+      data: { adminId, targetUserId: targetUser.id, plan: input.plan, durationDays, reason: input.reason },
+    })
+    const grant = await tx.subscriptionGrant.create({
       data: {
         userId: targetUser.id,
-        plan,
-        status: "ACTIVE",
-        endDate,
-        startDate,
+        plan: input.plan,
+        source: "ADMIN_GRANT",
+        durationDays,
+        startsAt,
+        endsAt,
       },
     })
-  }
-
-  let payment = null
-  if (!skipPaymentRecord) {
-    payment = await prisma.payment.create({
+    const subscription = current
+      ? await tx.subscription.update({ where: { id: current.id }, data: { plan: input.plan, status: "ACTIVE", endDate: endsAt, autoRenew: false } })
+      : await tx.subscription.create({ data: { userId: targetUser.id, plan: input.plan, status: "ACTIVE", startDate: startsAt, endDate: endsAt } })
+    await tx.auditEvent.create({
       data: {
         userId: adminId,
-        beneficiaryUserId: targetUser.id,
-        amount: getPlanPrice(plan),
-        currency: "TND",
-        provider: "MANUAL",
-        status: "SUCCESS",
-        transactionRef: `MANUAL-ACT-${log.id.slice(0, 8)}`,
-        itemType: "SUBSCRIPTION",
-        itemId: plan,
+        action: "ADMIN_SUBSCRIPTION_GRANT_CREATED",
+        targetType: "SubscriptionGrant",
+        targetId: grant.id,
+        metadata: { targetUserId: targetUser.id, plan: input.plan, durationDays, reason: input.reason?.slice(0, 500) },
       },
     })
-  }
+    return { subscription, grant, log }
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
-  sendSubscriptionConfirmation(
-    targetUser.email,
-    targetUser.fullName,
-    plan,
-    endDate
-  ).catch(console.error)
-
+  void sendSubscriptionConfirmation(targetUser.email, targetUser.fullName, input.plan, result.subscription.endDate, targetUser.id)
   return {
-    subscription,
-    payment,
-    log,
-    user: {
-      id: targetUser.id,
-      publicId: targetUser.publicId,
-      email: targetUser.email,
-      fullName: targetUser.fullName,
-    },
+    ...result,
+    payment: null,
+    user: { id: targetUser.id, publicId: targetUser.publicId, email: targetUser.email, fullName: targetUser.fullName },
   }
 }
 
-/** Approve a PENDING payment and activate subscription for payer or beneficiary. */
 export async function approvePayment(adminId: string, paymentId: string, reason?: string) {
-  const payment = await prisma.payment.findUnique({
-    where: { id: paymentId },
-    include: {
-      user: { select: { id: true, email: true, fullName: true } },
-      beneficiary: { select: { id: true, email: true, fullName: true } },
-    },
-  })
-
-  if (!payment) throw new Error("Paiement introuvable")
-  if (payment.status !== "PENDING") throw new Error("Ce paiement n'est plus en attente")
-
-  const target = payment.beneficiary || payment.user
-
-  const plan = (payment.itemId || "STUDENT_MONTHLY") as ManualActivationInput["plan"]
-  const durationDays = getPlanDurationDays(plan)
-
-  const result = await manualActivateSubscription(adminId, {
-    targetUserId: target.id,
-    plan,
-    durationDays,
-    reason: reason || `Approbation paiement ${payment.id}`,
-    skipPaymentRecord: true,
-  })
-
-  const updatedPayment = await prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      status: "SUCCESS",
-      transactionRef: payment.transactionRef || `MANUAL-${Date.now()}`,
-    },
-  })
-
-  return { ...result, payment: updatedPayment, targetUserId: target.id }
+  const payment = await approveManualCashPayment(adminId, paymentId, reason || "Espèces reçues")
+  return { payment, targetUserId: payment.beneficiaryUserId || payment.userId }
 }
 
-export async function rejectPayment(paymentId: string, reason?: string) {
-  const payment = await prisma.payment.findUnique({ where: { id: paymentId } })
-  if (!payment) throw new Error("Paiement introuvable")
-  if (payment.status !== "PENDING") throw new Error("Ce paiement n'est plus en attente")
-
-  return prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      status: "FAILED",
-      transactionRef: reason ? `REJECTED:${reason.slice(0, 80)}` : `REJECTED-${Date.now()}`,
-    },
-  })
+export async function rejectPayment(paymentId: string, reason?: string, adminId = "") {
+  return rejectManualCashPayment(adminId || undefined, paymentId, reason || "Paiement en espèces refusé")
 }

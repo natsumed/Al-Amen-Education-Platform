@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Loader2, CreditCard } from "lucide-react"
+import Link from "next/link"
 import { PRICING_PLANS } from "@/types"
 import { useLanguage } from "@/providers/language-provider"
 
@@ -19,6 +20,9 @@ export default function ParentPayPage() {
   const [childId, setChildId] = useState("")
   const [plan, setPlan] = useState("STUDENT_MONTHLY")
   const [loading, setLoading] = useState(false)
+  const [provider, setProvider] = useState<"MANUAL_CASH" | "CLICTOPAY">("MANUAL_CASH")
+  const [clicToPayAvailable, setClicToPayAvailable] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   useEffect(() => {
     fetch("/api/parents/children")
@@ -30,6 +34,12 @@ export default function ParentPayPage() {
       })
   }, [])
 
+  useEffect(() => {
+    fetch("/api/payments/methods").then((r) => r.json()).then((data) => {
+      setClicToPayAvailable(Boolean(data.methods?.find((method: any) => method.provider === "CLICTOPAY" && method.available)))
+    }).catch(() => undefined)
+  }, [])
+
   const studentPlans = PRICING_PLANS.filter((p) => p.role === "STUDENT")
   const selected = studentPlans.find((p) => p.id === plan)
 
@@ -38,26 +48,30 @@ export default function ParentPayPage() {
       toast.error(isAr ? "اختر تلميذاً" : "Choisissez un élève")
       return
     }
+    if (!termsAccepted) {
+      toast.error(isAr ? "يجب قبول الشروط" : "Acceptez les conditions de vente")
+      return
+    }
     setLoading(true)
     try {
-      const res = await fetch("/api/payments/create", {
+      const res = await fetch("/api/payments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
         body: JSON.stringify({
-          itemType: "SUBSCRIPTION",
-          plan,
-          provider: "MANUAL",
+          productKind: "SUBSCRIPTION",
+          productId: plan,
+          provider,
           beneficiaryId: childId,
+          termsAccepted: true,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Erreur")
-      toast.success(
-        isAr
-          ? "تم إرسال الطلب — ينتظر موافقة الإدارة"
-          : "Demande envoyée — en attente d'approbation admin"
-      )
-      router.push("/parent")
+      if (provider === "CLICTOPAY" && data.redirectUrl) window.location.assign(data.redirectUrl)
+      else {
+        toast.success(isAr ? "تم إرسال الطلب — ينتظر موافقة الإدارة" : "Demande envoyée — en attente d'approbation admin")
+        router.push("/parent")
+      }
     } catch (e: any) {
       toast.error(e.message || "Erreur")
     } finally {
@@ -135,7 +149,21 @@ export default function ParentPayPage() {
                   <p className="text-sm text-muted-foreground">{selected.period}</p>
                 </div>
               )}
-              <Button className="w-full h-11" onClick={submit} disabled={loading || !childId}>
+              <div className="space-y-2">
+                <Label>{isAr ? "طريقة الدفع" : "Méthode de paiement"}</Label>
+                <Select value={provider} onValueChange={(value) => setProvider(value as "MANUAL_CASH" | "CLICTOPAY")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MANUAL_CASH">{isAr ? "نقداً" : "Espèces"}</SelectItem>
+                    {clicToPayAvailable && <SelectItem value="CLICTOPAY">ClicToPay</SelectItem>}
+                  </SelectContent>
+                </Select>
+              </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} className="mt-0.5 accent-primary" />
+                <span>{isAr ? "أوافق على الشروط وسياسة الاسترجاع" : <>J’accepte les <Link className="underline" href="/terms">conditions</Link> et la <Link className="underline" href="/refund-policy">politique de remboursement</Link>.</>}</span>
+              </label>
+              <Button className="w-full h-11" onClick={submit} disabled={loading || !childId || !termsAccepted}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 {isAr ? "إرسال الطلب" : "Envoyer la demande"}
               </Button>

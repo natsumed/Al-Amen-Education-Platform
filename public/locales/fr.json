@@ -129,9 +129,8 @@
   "payment": {
     "title": "Paiement",
     "method": "Méthode de paiement",
-    "konnect": "Konnect",
-    "flouci": "Flouci",
-    "manual": "Espèces (Manuel)",
+    "clictopay": "ClicToPay",
+    "manual": "Espèces",
     "proceed": "Procéder au paiement",
     "total": "Total",
     "history": "Historique des paiements",

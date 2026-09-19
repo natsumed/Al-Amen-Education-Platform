@@ -13,7 +13,7 @@ export async function GET() {
     const [totalUsers, totalContent, totalRevenue, activeSubscriptions, newUsersThisMonth, recentContent, contentByType] = await Promise.all([
       prisma.user.count(),
       prisma.content.count({ where: { status: "PUBLISHED" } }),
-      prisma.payment.aggregate({ where: { status: "SUCCESS" }, _sum: { amount: true } }),
+      prisma.payment.aggregate({ where: { status: "SUCCEEDED" }, _sum: { amountMillis: true } }),
       prisma.subscription.count({ where: { status: "ACTIVE", endDate: { gt: now } } }),
       prisma.user.count({ where: { createdAt: { gte: monthStart } } }),
       prisma.content.findMany({ orderBy: { createdAt: "desc" }, take: 10, select: { id: true, titleFr: true, contentType: true, createdAt: true } }),
@@ -26,7 +26,7 @@ export async function GET() {
     return NextResponse.json({
       totalUsers,
       totalContent,
-      totalRevenue: Number(totalRevenue._sum.amount || 0),
+      totalRevenue: Number(totalRevenue._sum.amountMillis || 0) / 1000,
       activeSubscriptions,
       newUsersThisMonth,
       recentContent,

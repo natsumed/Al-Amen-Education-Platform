@@ -95,6 +95,8 @@ export type ContentItem = {
   subject: string
   contentType: string
   isFree: boolean
+  price?: number | null
+  priceMillis?: number | null
   thumbnailUrl?: string | null
   access?: { canAccess: boolean; canDownload: boolean; isSubscribed: boolean }
   mediaLocked?: boolean
@@ -121,6 +123,28 @@ export type ProgressItem = {
   completed: boolean
   lastAccessed: string
   content: ContentItem
+}
+
+export type PaymentProvider = "MANUAL_CASH" | "CLICTOPAY"
+
+export type PaymentMethod = {
+  provider: PaymentProvider
+  available: boolean
+  reason?: string | null
+  mode?: string
+}
+
+export type PaymentResult = {
+  paymentId: string
+  merchantOrderRef: string
+  status: string
+  provider: PaymentProvider
+  productKind: "SUBSCRIPTION" | "CONTENT"
+  productId: string
+  productTitle: string
+  amountMillis: number
+  currency: "TND"
+  redirectUrl?: string
 }
 
 export type DocumentManifest = {
@@ -314,6 +338,28 @@ export const api = {
 
   getSubscription: (token: string) =>
     request<{ subscription: Subscription | null }>("/api/subscriptions/me", { token }),
+
+  paymentMethods: () =>
+    request<{ methods: PaymentMethod[] }>("/api/payments/methods"),
+
+  createPayment: (
+    token: string,
+    input: {
+      productKind: "SUBSCRIPTION" | "CONTENT"
+      productId: string
+      provider: PaymentProvider
+      beneficiaryId?: string
+    },
+    idempotencyKey: string
+  ) => request<PaymentResult>("/api/payments", {
+    method: "POST",
+    token,
+    headers: { "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify({ ...input, termsAccepted: true }),
+  }),
+
+  getPayment: (token: string, paymentId: string) =>
+    request<PaymentResult & { entitlementActive?: boolean }>(`/api/payments/${paymentId}`, { token }),
 
   getProfile: (token: string) =>
     request<{ user: MobileUser; subscription: Subscription | null }>("/api/users/me", { token }),

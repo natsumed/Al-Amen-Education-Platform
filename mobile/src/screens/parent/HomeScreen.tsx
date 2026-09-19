@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from "react"
-import { View, Text, StyleSheet, Linking, Pressable } from "react-native"
+import { View, Text, StyleSheet, Pressable } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useFocusEffect, useNavigation } from "@react-navigation/native"
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs"
-import { api, getApiBaseUrl } from "../../lib/api"
+import { api } from "../../lib/api"
 import { useAuth } from "../../lib/auth-context"
 import { t } from "../../lib/i18n"
 import { Screen } from "../../components/Screen"
@@ -25,14 +25,6 @@ export function ParentHomeScreen() {
         .catch(() => setChildCount(null))
     }, [token])
   )
-
-  const openPay = () => {
-    try {
-      void Linking.openURL(`${getApiBaseUrl()}/parent/pay`)
-    } catch {
-      /* ignore */
-    }
-  }
 
   return (
     <Screen scroll>
@@ -67,14 +59,14 @@ export function ParentHomeScreen() {
         <Ionicons name="chevron-forward" size={20} color={colors.muted} />
       </Pressable>
 
-      <Pressable style={[styles.card, shadow.card]} onPress={openPay}>
+      <Pressable style={[styles.card, shadow.card]} onPress={() => navigation.navigate("ChildrenTab")}>
         <View style={styles.cardIcon}>
           <Ionicons name="card" size={22} color={colors.primary} />
         </View>
         <View style={styles.cardInfo}>
           <Text style={styles.cardTitle}>{t("payOnWeb", language)}</Text>
         </View>
-        <Ionicons name="open-outline" size={18} color={colors.muted} />
+        <Ionicons name="chevron-forward" size={20} color={colors.muted} />
       </Pressable>
     </Screen>
   )

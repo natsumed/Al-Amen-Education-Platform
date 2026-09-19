@@ -129,9 +129,8 @@
   "payment": {
     "title": "الدفع",
     "method": "طريقة الدفع",
-    "konnect": "كونكت",
-    "flouci": "فلوسي",
-    "manual": "نقداً (يدوي)",
+    "clictopay": "ClicToPay",
+    "manual": "نقداً",
     "proceed": "المتابعة للدفع",
     "total": "الإجمالي",
     "history": "سجل المدفوعات",

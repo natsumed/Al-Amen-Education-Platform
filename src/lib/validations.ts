@@ -98,6 +98,7 @@ export const createContentSchema = z.object({
   editionLabel: z.string().trim().max(80).optional(),
   isFree: z.boolean().default(true),
   price: z.number().min(0).optional(),
+  priceMillis: z.number().int().positive().optional(),
   thumbnailUrl: optionalUrl,
   /** YouTube or Drive video link (Drive links normalized at serve time) */
   youtubeUrl: optionalUrl,
@@ -116,18 +117,33 @@ export const parentLinkRespondSchema = z.object({
 export const updateContentSchema = createContentSchema.partial()
 
 export const createPaymentSchema = z.object({
-  itemType: z.enum(["SUBSCRIPTION", "CONTENT"]),
+  productKind: z.enum(["SUBSCRIPTION", "CONTENT"]).optional(),
+  productId: z.string().min(1).optional(),
+  itemType: z.enum(["SUBSCRIPTION", "CONTENT"]).optional(),
   itemId: z.string().optional(),
-  plan: z.enum(["FREE", "STUDENT_MONTHLY", "STUDENT_YEARLY", "TEACHER_MONTHLY", "TEACHER_YEARLY"]).optional(),
-  provider: z.enum(["CLICTOPAY", "MANUAL"]),
+  plan: z.enum(["STUDENT_MONTHLY", "STUDENT_YEARLY", "TEACHER_MONTHLY", "TEACHER_YEARLY"]).optional(),
+  provider: z.enum(["CLICTOPAY", "MANUAL_CASH", "MANUAL"]),
   /** When a parent pays for a linked student — publicId, email, or UUID */
   beneficiaryId: z.string().optional(),
+  termsAccepted: z.literal(true),
+}).superRefine((value, ctx) => {
+  if (!(value.productKind || value.itemType)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["productKind"], message: "Type de produit requis" })
+  }
+  if (!(value.productId || value.plan || value.itemId)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["productId"], message: "Produit requis" })
+  }
 })
 
 export const approvePaymentSchema = z.object({
   paymentId: z.string().min(1),
   action: z.enum(["APPROVE", "REJECT"]),
-  reason: z.string().optional(),
+  reason: z.string().trim().min(3).max(500),
+  cashReceived: z.boolean().optional(),
+}).superRefine((value, ctx) => {
+  if (value.action === "APPROVE" && value.cashReceived !== true) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cashReceived"], message: "Confirmez la réception des espèces" })
+  }
 })
 
 export const manualActivationSchema = z.object({

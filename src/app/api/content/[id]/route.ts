@@ -44,7 +44,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const parsed = updateContentSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-    const content = await prisma.content.update({ where: { id }, data: parsed.data })
+    const existing = await prisma.content.findUnique({ where: { id }, select: { isFree: true, price: true, priceMillis: true } })
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    const isFree = parsed.data.isFree ?? existing.isFree
+    const priceMillis = isFree ? null : parsed.data.priceMillis
+      ?? (parsed.data.price == null
+        ? existing.priceMillis ?? (existing.price == null ? 0 : Math.round(existing.price * 1_000))
+        : Math.round(parsed.data.price * 1_000))
+    if (!isFree && (priceMillis == null || !Number.isSafeInteger(priceMillis) || priceMillis <= 0)) {
+      return NextResponse.json({ error: "Un contenu payant doit avoir un prix positif" }, { status: 400 })
+    }
+    const content = await prisma.content.update({
+      where: { id },
+      data: { ...parsed.data, priceMillis, price: priceMillis == null ? null : priceMillis / 1_000 },
+    })
     return NextResponse.json(content)
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })
@@ -59,8 +72,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    const activePurchases = await prisma.purchase.count({ where: { contentId: id, status: "ACTIVE" } })
+    if (activePurchases > 0) {
+      await prisma.content.update({ where: { id }, data: { status: "DRAFT" } })
+      await prisma.auditEvent.create({
+        data: { userId: session.user.id, action: "PURCHASED_CONTENT_ARCHIVED", targetType: "Content", targetId: id, metadata: { activePurchases } },
+      })
+      return NextResponse.json({ message: "Contenu archivé pour préserver les achats existants", archived: true })
+    }
     await prisma.content.delete({ where: { id } })
-    return NextResponse.json({ message: "Supprimé" })
+    return NextResponse.json({ message: "Supprimé", archived: false })
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })
   }

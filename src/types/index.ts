@@ -7,8 +7,20 @@ export type Subject = "ARABIC" | "FRENCH" | "MATH" | "SCIENCE" | "ISLAMIC" | "HI
 export type ContentType = "COURSE" | "BOOK" | "SERIES" | "ANIMATION"
 export type SubscriptionPlan = "FREE" | "STUDENT_MONTHLY" | "STUDENT_YEARLY" | "TEACHER_MONTHLY" | "TEACHER_YEARLY"
 export type SubscriptionStatus = "ACTIVE" | "EXPIRED" | "CANCELLED"
-export type PaymentProvider = "CLICTOPAY" | "MANUAL"
-export type PaymentStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED"
+export type PaymentProvider = "CLICTOPAY" | "MANUAL_CASH"
+export type PaymentStatus =
+  | "CREATED"
+  | "PENDING_REVIEW"
+  | "REDIRECT_READY"
+  | "PROCESSING"
+  | "SUCCEEDED"
+  | "DECLINED"
+  | "CANCELLED"
+  | "EXPIRED"
+  | "INITIATION_FAILED"
+  | "RECONCILIATION_REQUIRED"
+  | "REFUND_PENDING"
+  | "REFUNDED"
 export type ParentLinkStatus = "PENDING" | "ACCEPTED" | "REJECTED"
 export type Language = "ar" | "fr"
 export type ContentLanguage = "AR" | "FR" | "EN" | "MULTI"
@@ -45,6 +57,7 @@ export interface Payment {
   id: string
   userId: string
   amount: number
+  amountMillis: number
   currency: string
   provider: PaymentProvider
   status: PaymentStatus
@@ -72,6 +85,7 @@ export interface Content {
   editionLabel?: string | null
   isFree: boolean
   price?: number | null
+  priceMillis?: number | null
   thumbnailUrl?: string | null
   youtubeUrl?: string | null
   pdfUrl?: string | null

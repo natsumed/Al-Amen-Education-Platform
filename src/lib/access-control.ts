@@ -34,7 +34,7 @@ export async function canAccessContent(
     },
   })
 
-  return purchase !== null
+  return purchase?.status === "ACTIVE"
 }
 
 export async function canDownload(
@@ -124,7 +124,7 @@ export async function getContentAccessInfo(
   })
 
   return {
-    canAccess: purchase !== null,
+    canAccess: purchase?.status === "ACTIVE",
     canDownload: false,
     isSubscribed: false,
   }

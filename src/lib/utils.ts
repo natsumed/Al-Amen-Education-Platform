@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { Grade, Subject } from "@/types"
+import { getPaidSubscriptionPlan, millisToTnd } from "./payment/catalog"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -112,24 +113,9 @@ export function calculateSubscriptionEnd(
 }
 
 export function getPlanDurationDays(plan: string): number {
-  switch (plan) {
-    case "STUDENT_MONTHLY":
-    case "TEACHER_MONTHLY":
-      return 30
-    case "STUDENT_YEARLY":
-    case "TEACHER_YEARLY":
-      return 365
-    default:
-      return 30
-  }
+  return getPaidSubscriptionPlan(plan).durationDays
 }
 
 export function getPlanPrice(plan: string): number {
-  switch (plan) {
-    case "STUDENT_MONTHLY": return 15
-    case "STUDENT_YEARLY": return 120
-    case "TEACHER_MONTHLY": return 25
-    case "TEACHER_YEARLY": return 200
-    default: return 0
-  }
+  return millisToTnd(getPaidSubscriptionPlan(plan).amountMillis)
 }

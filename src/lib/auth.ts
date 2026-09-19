@@ -82,6 +82,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           fullName: user.fullName,
           sessionVersion: user.sessionVersion,
           mfaEnrollmentRequired: ["ADMIN", "TEACHER"].includes(user.role) && !mfaEnabled,
+          mfaAuthenticatedAt: mfaEnabled ? Date.now() : undefined,
         }
       },
     }),
@@ -179,6 +180,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.lastChecked = Date.now()
         token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0
         token.mfaEnrollmentRequired = (user as { mfaEnrollmentRequired?: boolean }).mfaEnrollmentRequired ?? false
+        token.mfaAuthenticatedAt = (user as { mfaAuthenticatedAt?: number }).mfaAuthenticatedAt
       }
 
       // Client called session.update({ image }) after avatar upload or asked
@@ -232,6 +234,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.name = (token.fullName as string) || session.user.name
         session.user.image = (token.picture as string | null | undefined) ?? null
         session.user.mfaEnrollmentRequired = token.mfaEnrollmentRequired
+        session.user.mfaAuthenticatedAt = token.mfaAuthenticatedAt
       }
       return session
     },

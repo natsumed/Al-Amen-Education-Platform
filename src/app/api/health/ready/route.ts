@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getRedisClient } from "@/lib/redis"
+import { getClicToPayReadiness } from "@/lib/payment/clictopay"
 
 export const dynamic = "force-dynamic"
 
@@ -8,7 +9,11 @@ export async function GET() {
   const checks: Record<string, "ok" | "error" | "disabled"> = {
     database: "error",
     valkey: process.env.REDIS_URL ? "error" : "disabled",
+    clictopay: "disabled",
   }
+
+  const clicToPay = getClicToPayReadiness()
+  checks.clictopay = clicToPay.mode === "disabled" ? "disabled" : clicToPay.configured ? "ok" : "error"
 
   try {
     await prisma.$queryRaw`SELECT 1`
@@ -26,7 +31,7 @@ export async function GET() {
     }
   }
 
-  const ready = checks.database === "ok" && checks.valkey !== "error"
+  const ready = checks.database === "ok" && checks.valkey !== "error" && checks.clictopay !== "error"
   return NextResponse.json(
     { status: ready ? "ready" : "not_ready", checks, timestamp: new Date().toISOString() },
     { status: ready ? 200 : 503, headers: { "Cache-Control": "no-store" } }

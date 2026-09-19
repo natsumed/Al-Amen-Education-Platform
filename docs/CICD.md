@@ -30,7 +30,9 @@ CI uses an ephemeral PostgreSQL service and dummy env only. No real secrets.
 - `DATABASE_URL` (Postgres)
 - `GEMINI_API_KEY` (optional chatbot)
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_REPLY_TO`, and `EMAIL_WORKER_ENABLED` (protected Spacemail secrets)
-- Payment keys when Konnect/Flouci go live
+- SMT ClicToPay merchant credentials only after bank affiliation and sandbox
+  certification. Keep `CLICTOPAY_MODE=disabled` and
+  `CLICTOPAY_ADAPTER_CERTIFIED=false` until then.
 
 ### Recommended GitHub settings
 

@@ -7,29 +7,66 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// String fields intentionally remain application-level unions in src/types/index.ts.
+// Most legacy string fields remain application-level unions. Payment fields use
+// database enums because invalid financial state transitions must fail closed.
+
+enum PaymentProvider {
+  MANUAL_CASH
+  CLICTOPAY
+}
+
+enum PaymentProductKind {
+  SUBSCRIPTION
+  CONTENT
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING_REVIEW
+  REDIRECT_READY
+  PROCESSING
+  SUCCEEDED
+  DECLINED
+  CANCELLED
+  EXPIRED
+  INITIATION_FAILED
+  RECONCILIATION_REQUIRED
+  REFUND_PENDING
+  REFUNDED
+}
+
+enum PaymentGrantSource {
+  PAYMENT
+  ADMIN_GRANT
+  LEGACY_IMPORT
+}
+
+enum EntitlementStatus {
+  ACTIVE
+  REVERSED
+}
 
 model User {
-  id                 String    @id @default(uuid())
-  publicId           String    @unique
-  email              String    @unique
-  passwordHash       String?
-  phone              String?
-  fullName           String
-  role               String    @default("STUDENT")
-  avatarUrl          String?
-  googleId           String?   @unique
-  emailVerified      DateTime?
+  id                    String    @id @default(uuid())
+  publicId              String    @unique
+  email                 String    @unique
+  passwordHash          String?
+  phone                 String?
+  fullName              String
+  role                  String    @default("STUDENT")
+  avatarUrl             String?
+  googleId              String?   @unique
+  emailVerified         DateTime?
   onboardingCompletedAt DateTime?
-  resetToken         String?
-  resetTokenExp      DateTime?
-  isBanned           Boolean   @default(false)
-  preferredLanguage  String?
-  emailNotifications Boolean   @default(true)
-  sessionVersion     Int       @default(0)
-  passwordUpdatedAt  DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  resetToken            String?
+  resetTokenExp         DateTime?
+  isBanned              Boolean   @default(false)
+  preferredLanguage     String?
+  emailNotifications    Boolean   @default(true)
+  sessionVersion        Int       @default(0)
+  passwordUpdatedAt     DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   subscriptions          Subscription[]
   payments               Payment[]
@@ -53,6 +90,7 @@ model User {
   authChallenges         AuthChallenge[]
   oneTimeTokens          OneTimeToken[]
   emailOutbox            EmailOutbox[]
+  subscriptionGrants     SubscriptionGrant[]
 }
 
 model DeviceToken {
@@ -85,30 +123,99 @@ model Subscription {
 }
 
 model Payment {
-  id                String    @id @default(uuid())
-  userId            String
-  beneficiaryUserId String?
-  amount            Float
-  currency          String    @default("TND")
-  provider          String
-  status            String    @default("PENDING")
-  transactionRef    String?
-  merchantOrderRef  String?   @unique
-  amountMillis      Int?
-  callbackDigest    String?
-  verifiedAt        DateTime?
-  reconciledAt      DateTime?
-  itemType          String
-  itemId            String?
-  createdAt         DateTime  @default(now())
+  id                       String             @id @default(uuid())
+  userId                   String
+  beneficiaryUserId        String?
+  productKind              PaymentProductKind
+  productId                String
+  productTitle             String
+  plan                     String?
+  planDurationDays         Int?
+  amount                   Float
+  amountMillis             Int
+  currency                 String             @default("TND")
+  provider                 PaymentProvider
+  status                   PaymentStatus      @default(CREATED)
+  transactionRef           String?
+  merchantOrderRef         String             @unique
+  providerOrderRef         String?            @unique
+  providerTransactionRef   String?            @unique
+  idempotencyKey           String?
+  idempotencyFingerprint   String?
+  callbackDigest           String?
+  failureCode              String?
+  failureMessage           String?
+  termsAcceptedAt          DateTime?
+  initiatedAt              DateTime?
+  redirectedAt             DateTime?
+  expiresAt                DateTime?
+  verifiedAt               DateTime?
+  settledAt                DateTime?
+  failedAt                 DateTime?
+  cancelledAt              DateTime?
+  refundedAt               DateTime?
+  reconciledAt             DateTime?
+  processingLeaseId        String?
+  processingLeaseExpiresAt DateTime?
+  // Compatibility columns retained for one rollback window.
+  itemType                 String
+  itemId                   String?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
 
-  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  beneficiary User? @relation("PaymentBeneficiary", fields: [beneficiaryUserId], references: [id], onDelete: SetNull)
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  beneficiary       User?              @relation("PaymentBeneficiary", fields: [beneficiaryUserId], references: [id], onDelete: SetNull)
+  events            PaymentEvent[]
+  subscriptionGrant SubscriptionGrant?
+  purchase          Purchase?
 
+  @@unique([userId, idempotencyKey])
   @@index([userId])
   @@index([beneficiaryUserId])
   @@index([transactionRef])
   @@index([status])
+  @@index([provider, status, expiresAt])
+  @@index([processingLeaseExpiresAt])
+}
+
+model PaymentEvent {
+  id               String         @id @default(uuid())
+  paymentId        String
+  eventType        String
+  eventDigest      String         @unique
+  providerEventRef String?
+  normalizedStatus PaymentStatus?
+  verified         Boolean        @default(false)
+  metadata         Json?
+  processingError  String?
+  processedAt      DateTime?
+  createdAt        DateTime       @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentId, providerEventRef])
+  @@index([paymentId, createdAt])
+  @@index([verified, createdAt])
+}
+
+model SubscriptionGrant {
+  id           String             @id @default(uuid())
+  userId       String
+  paymentId    String?            @unique
+  plan         String
+  source       PaymentGrantSource
+  durationDays Int
+  startsAt     DateTime
+  endsAt       DateTime
+  status       EntitlementStatus  @default(ACTIVE)
+  reversedAt   DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, endsAt])
 }
 
 model Content {
@@ -129,6 +236,7 @@ model Content {
   editionLabel  String?
   isFree        Boolean  @default(true)
   price         Float?
+  priceMillis   Int?
   thumbnailUrl  String?
   youtubeUrl    String?
   pdfUrl        String?
@@ -194,13 +302,18 @@ model ParentLink {
 }
 
 model Purchase {
-  id        String   @id @default(uuid())
+  id        String            @id @default(uuid())
   userId    String
   contentId String
-  createdAt DateTime @default(now())
+  paymentId String?           @unique
+  status    EntitlementStatus @default(ACTIVE)
+  revokedAt DateTime?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
-  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content Content  @relation(fields: [contentId], references: [id], onDelete: Restrict)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
   @@unique([userId, contentId])
   @@index([userId])
@@ -228,7 +341,7 @@ model ContentAsset {
   sourceFileIdHash   String?
   sourceFileName     String?
   locale             String?
-  assetRole         String   @default("PRIMARY")
+  assetRole          String   @default("PRIMARY")
   deliveryProvider   String?
   deliveryAssetId    String?
   status             String   @default("PENDING")
@@ -404,37 +517,37 @@ model AuditEvent {
 }
 
 model MobileRelease {
-  id             String    @id @default(uuid())
-  platform       String
-  artifactType   String    @default("APK")
-  version        String
-  buildNumber    Int
-  url            String
-  checksumSha256 String?
-  signatureSha256 String?
-  sizeBytes      BigInt?
-  minimumVersion String?
+  id                 String    @id @default(uuid())
+  platform           String
+  artifactType       String    @default("APK")
+  version            String
+  buildNumber        Int
+  url                String
+  checksumSha256     String?
+  signatureSha256    String?
+  sizeBytes          BigInt?
+  minimumVersion     String?
   minimumBuildNumber Int?
-  appStoreUrl    String?
-  sourceCommit   String?
-  isMandatory    Boolean   @default(false)
-  isPublished    Boolean   @default(false)
-  releasedAt     DateTime?
-  publishedAt    DateTime?
-  createdAt      DateTime  @default(now())
+  appStoreUrl        String?
+  sourceCommit       String?
+  isMandatory        Boolean   @default(false)
+  isPublished        Boolean   @default(false)
+  releasedAt         DateTime?
+  publishedAt        DateTime?
+  createdAt          DateTime  @default(now())
 
   @@unique([platform, buildNumber])
   @@index([platform, isPublished, buildNumber])
 }
 
 model ExternalAccount {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   provider          String
   providerAccountId String
   userId            String
   emailAtLink       String?
   revokedAt         DateTime?
-  createdAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
   lastLoginAt       DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -445,14 +558,14 @@ model ExternalAccount {
 }
 
 model AuthChallenge {
-  id          String   @id @default(uuid())
-  userId      String?
-  type        String
-  provider    String?
-  payload     Json?
-  expiresAt   DateTime
-  consumedAt  DateTime?
-  createdAt   DateTime @default(now())
+  id         String    @id @default(uuid())
+  userId     String?
+  type       String
+  provider   String?
+  payload    Json?
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -461,14 +574,14 @@ model AuthChallenge {
 }
 
 model OneTimeToken {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   userId     String
   purpose    String
   tokenHash  String
   expiresAt  DateTime
   consumedAt DateTime?
   revokedAt  DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -477,23 +590,23 @@ model OneTimeToken {
 }
 
 model EmailOutbox {
-  id              String    @id @default(uuid())
-  userId          String?
-  type            String
-  recipient       String
-  locale          String    @default("fr")
-  payloadEncrypted String?
-  templateVersion String    @default("v1")
-  idempotencyKey  String    @unique
-  status          String    @default("PENDING")
-  attempts        Int       @default(0)
-  nextAttemptAt   DateTime  @default(now())
+  id                String    @id @default(uuid())
+  userId            String?
+  type              String
+  recipient         String
+  locale            String    @default("fr")
+  payloadEncrypted  String?
+  templateVersion   String    @default("v1")
+  idempotencyKey    String    @unique
+  status            String    @default("PENDING")
+  attempts          Int       @default(0)
+  nextAttemptAt     DateTime  @default(now())
   providerMessageId String?
-  sentAt          DateTime?
-  expiresAt       DateTime?
-  lastError       String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  sentAt            DateTime?
+  expiresAt         DateTime?
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 

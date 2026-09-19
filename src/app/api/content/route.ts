@@ -67,7 +67,15 @@ export async function POST(req: NextRequest) {
     const parsed = createContentSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-    const content = await prisma.content.create({ data: { ...parsed.data, uploadedById: session.user.id } })
+    const priceMillis = parsed.data.isFree
+      ? null
+      : parsed.data.priceMillis ?? (parsed.data.price == null ? 0 : Math.round(parsed.data.price * 1_000))
+    if (!parsed.data.isFree && (priceMillis == null || !Number.isSafeInteger(priceMillis) || priceMillis <= 0)) {
+      return NextResponse.json({ error: "Un contenu payant doit avoir un prix positif" }, { status: 400 })
+    }
+    const content = await prisma.content.create({
+      data: { ...parsed.data, priceMillis, price: priceMillis == null ? null : priceMillis / 1_000, uploadedById: session.user.id },
+    })
     return NextResponse.json(content, { status: 201 })
   } catch (error) {
     console.error("POST /api/content error:", error)

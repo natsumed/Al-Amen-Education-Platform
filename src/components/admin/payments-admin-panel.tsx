@@ -9,13 +9,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDate, formatCurrency } from "@/lib/utils"
 import { toast } from "sonner"
-import { Check, X, Loader2 } from "lucide-react"
+import { Check, X, Loader2, RefreshCw, Undo2 } from "lucide-react"
 import { SubscriptionPeriod } from "@/components/subscription/subscription-period"
 
 const STATUS_COLORS: Record<string, "secondary" | "success" | "destructive" | "warning"> = {
-  PENDING: "warning",
-  SUCCESS: "success",
-  FAILED: "destructive",
+  CREATED: "warning",
+  PENDING_REVIEW: "warning",
+  REDIRECT_READY: "warning",
+  PROCESSING: "warning",
+  RECONCILIATION_REQUIRED: "destructive",
+  SUCCEEDED: "success",
+  DECLINED: "destructive",
+  CANCELLED: "secondary",
+  EXPIRED: "secondary",
+  INITIATION_FAILED: "destructive",
+  REFUND_PENDING: "warning",
   REFUNDED: "secondary",
 }
 
@@ -28,7 +36,7 @@ export function PaymentsAdminPanel({ mode = "all" }: { mode?: Mode }) {
 
   const load = () => {
     setLoading(true)
-    const qs = mode === "pending" ? "?status=PENDING" : ""
+    const qs = mode === "pending" ? "?status=PENDING_REVIEW" : ""
     fetch(`/api/payments${qs}`)
       .then((r) => r.json())
       .then((d) => {
@@ -43,12 +51,14 @@ export function PaymentsAdminPanel({ mode = "all" }: { mode?: Mode }) {
   }, [mode])
 
   const act = async (paymentId: string, action: "APPROVE" | "REJECT") => {
+    const reason = window.prompt(action === "APPROVE" ? "Référence/preuve de réception des espèces" : "Motif du refus")?.trim()
+    if (!reason) return
     setBusyId(paymentId)
     try {
       const res = await fetch("/api/payments/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId, action }),
+        body: JSON.stringify({ paymentId, action, reason, cashReceived: action === "APPROVE" }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Erreur")
@@ -61,12 +71,53 @@ export function PaymentsAdminPanel({ mode = "all" }: { mode?: Mode }) {
     }
   }
 
-  const pending = payments.filter((p) => p.status === "PENDING")
+  const reconcile = async (paymentId: string) => {
+    setBusyId(paymentId)
+    try {
+      const res = await fetch(`/api/admin/payments/${paymentId}/reconcile`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Erreur")
+      toast.success(`Rapprochement terminé : ${data.payment.status}`)
+      load()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erreur")
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const refund = async (payment: any) => {
+    const reason = window.prompt("Motif du remboursement")?.trim()
+    if (!reason) return
+    const confirmManual = payment.provider === "MANUAL_CASH" && payment.status === "REFUND_PENDING"
+    setBusyId(payment.id)
+    try {
+      const res = await fetch(`/api/admin/payments/${payment.id}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: confirmManual ? "CONFIRM" : "REQUEST",
+          reason,
+          providerConfirmed: confirmManual,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Erreur")
+      toast.success(data.message || (confirmManual ? "Remboursement confirmé" : "Remboursement demandé"))
+      load()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erreur")
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const pending = payments.filter((p) => p.status === "PENDING_REVIEW" && p.provider === "MANUAL_CASH")
   const title = mode === "pending" ? "Paiements en attente" : "Tous les paiements"
   const subtitle =
     mode === "pending"
       ? "Approuvez ou refusez les demandes espèces / virement."
-      : "Inclut les activations manuelles (provider MANUAL) et les paiements en ligne."
+      : "Paiements espèces et, après certification SMT, transactions ClicToPay vérifiées."
 
   return (
     <div className="space-y-8">
@@ -130,18 +181,19 @@ export function PaymentsAdminPanel({ mode = "all" }: { mode?: Mode }) {
                 <TableHead>Statut</TableHead>
                 <TableHead>Période</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                     Chargement...
                   </TableCell>
                 </TableRow>
               ) : payments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                     Aucun paiement
                   </TableCell>
                 </TableRow>
@@ -162,8 +214,8 @@ export function PaymentsAdminPanel({ mode = "all" }: { mode?: Mode }) {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="font-medium">{formatCurrency(Number(p.amount))}</TableCell>
-                    <TableCell className="text-xs">{p.itemId || p.itemType}</TableCell>
+                    <TableCell className="font-medium">{formatCurrency(Number(p.amountMillis) / 1000)}</TableCell>
+                    <TableCell className="text-xs">{p.productTitle || p.productId}</TableCell>
                     <TableCell className="text-xs">{p.provider}</TableCell>
                     <TableCell>
                       <Badge variant={STATUS_COLORS[p.status] || "secondary"}>{p.status}</Badge>
@@ -180,6 +232,25 @@ export function PaymentsAdminPanel({ mode = "all" }: { mode?: Mode }) {
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{formatDate(p.createdAt)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {p.provider === "CLICTOPAY" && ["REDIRECT_READY", "PROCESSING", "RECONCILIATION_REQUIRED", "REFUND_PENDING"].includes(p.status) && (
+                          <Button size="sm" variant="outline" disabled={busyId === p.id} onClick={() => void reconcile(p.id)}>
+                            <RefreshCw className="mr-1 h-3.5 w-3.5" /> Vérifier
+                          </Button>
+                        )}
+                        {p.status === "SUCCEEDED" && (
+                          <Button size="sm" variant="outline" disabled={busyId === p.id} onClick={() => void refund(p)}>
+                            <Undo2 className="mr-1 h-3.5 w-3.5" /> Rembourser
+                          </Button>
+                        )}
+                        {p.provider === "MANUAL_CASH" && p.status === "REFUND_PENDING" && (
+                          <Button size="sm" variant="outline" disabled={busyId === p.id} onClick={() => void refund(p)}>
+                            <Check className="mr-1 h-3.5 w-3.5" /> Confirmer retour espèces
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -214,10 +285,10 @@ function PendingRow({
           </p>
         )}
         <p className="text-sm mt-1">
-          {formatCurrency(Number(p.amount))} · {p.itemId || p.itemType} · {formatDate(p.createdAt)}
+          {formatCurrency(Number(p.amountMillis) / 1000)} · {p.productTitle || p.productId} · {formatDate(p.createdAt)}
         </p>
       </div>
-      <div className="flex gap-2">
+      {p.provider === "MANUAL_CASH" && p.status === "PENDING_REVIEW" && <div className="flex gap-2">
         <Button size="sm" disabled={busyId === p.id} onClick={() => act(p.id, "APPROVE")}>
           {busyId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
           Approuver
@@ -226,7 +297,7 @@ function PendingRow({
           <X className="h-4 w-4 mr-1" />
           Refuser
         </Button>
-      </div>
+      </div>}
     </div>
   )
 }

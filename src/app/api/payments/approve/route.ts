@@ -1,45 +1,35 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { approvePaymentSchema } from "@/lib/validations"
-import { approvePayment, rejectPayment } from "@/lib/payment"
+import { approveManualCashPayment, rejectManualCashPayment } from "@/lib/payment"
 import { sendPushToUser } from "@/lib/push"
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const mfaAt = session.user.mfaAuthenticatedAt || 0
+    if (session.user.mfaEnrollmentRequired || Date.now() - mfaAt > 30 * 60_000) {
+      return NextResponse.json({ error: "Une authentification MFA récente est requise", code: "MFA_STEP_UP_REQUIRED" }, { status: 403 })
     }
-
-    const body = await req.json()
-    const parsed = approvePaymentSchema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
-    }
-
-    if (parsed.data.action === "REJECT") {
-      const payment = await rejectPayment(parsed.data.paymentId, parsed.data.reason)
-      return NextResponse.json({ payment, message: "Paiement refusé" })
-    }
-
-    const result = await approvePayment(
-      session.user.id,
-      parsed.data.paymentId,
-      parsed.data.reason
-    )
-    if (result.targetUserId) {
-      void sendPushToUser(result.targetUserId, {
+    const parsed = approvePaymentSchema.safeParse(await req.json())
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    const { paymentId, action, reason } = parsed.data
+    const payment = action === "APPROVE"
+      ? await approveManualCashPayment(session.user.id, paymentId, reason)
+      : await rejectManualCashPayment(session.user.id, paymentId, reason)
+    const targetUserId = payment.beneficiaryUserId || payment.userId
+    if (action === "APPROVE") {
+      void sendPushToUser(targetUserId, {
         title: "Amenallah",
-        body: "Votre abonnement a été activé. Bon apprentissage !",
-        data: { type: "subscription" },
+        body: "Votre paiement est confirmé et votre accès est actif.",
+        data: { type: "payment", paymentId: payment.id },
       })
     }
-    return NextResponse.json({
-      message: "Paiement approuvé et abonnement activé",
-      ...result,
-    })
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Erreur serveur"
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ payment, targetUserId, message: action === "APPROVE" ? "Paiement confirmé" : "Paiement refusé" })
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "PAYMENT_REVIEW_FAILED"
+    const status = code.includes("FORBIDDEN") ? 403 : code.includes("STATE") ? 409 : 400
+    return NextResponse.json({ error: code, code }, { status })
   }
 }
