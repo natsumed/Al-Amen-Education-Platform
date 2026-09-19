@@ -66,15 +66,26 @@ jobs:
   deploy-staging:
     needs: build
     runs-on: ubuntu-latest
-    environment: staging
+    # The VPS deployment identity is deliberately held in the protected
+    # production-mobile environment.  It is a restricted `deploy` account,
+    # not the server's root account, and is shared by the web and APK release
+    # pipelines until dedicated staging/prod environments are provisioned.
+    environment: production-mobile
     steps:
       - name: Deploy immutable image to staging
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.MOBILE_RELEASE_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.MOBILE_RELEASE_SSH_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.MOBILE_RELEASE_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.MOBILE_RELEASE_SSH_KNOWN_HOSTS }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_SSH_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           install -m 600 /dev/null deploy_key
           printf '%s\n' "$DEPLOY_SSH_KEY" > deploy_key
           ssh -i deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n /opt/amenallah/deploy.sh staging ${IMAGE_TAG}"
@@ -84,15 +95,22 @@ jobs:
     needs: deploy-staging
     if: github.event_name == 'release' || inputs.deploy_production == true
     runs-on: ubuntu-latest
-    environment: production
+    environment: production-mobile
     steps:
       - name: Deploy the same verified image to production
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.MOBILE_RELEASE_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.MOBILE_RELEASE_SSH_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.MOBILE_RELEASE_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.MOBILE_RELEASE_SSH_KNOWN_HOSTS }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_SSH_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           install -m 600 /dev/null deploy_key
           printf '%s\n' "$DEPLOY_SSH_KEY" > deploy_key
           ssh -i deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n /opt/amenallah/deploy.sh production ${IMAGE_TAG}"
