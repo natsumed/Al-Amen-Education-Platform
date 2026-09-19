@@ -3,7 +3,7 @@ WORKDIR /app
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl clamav poppler-utils \
   && rm -rf /var/lib/apt/lists/*
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 COPY prisma ./prisma
 RUN npm ci --no-audit --no-fund
 
