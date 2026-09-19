@@ -1,0 +1,7 @@
+---
+description: Mobile rules
+globs: mobile/**/*
+alwaysApply: false
+---
+
+Use the pinned Expo version and native release configuration. Keep tokens in SecureStore, use the production HTTPS API, preserve capture protection, and never add Expo Go or localhost dependencies to a release build. Validate on a clean device/emulator before release.

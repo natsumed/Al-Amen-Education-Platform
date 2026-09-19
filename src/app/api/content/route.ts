@@ -15,11 +15,13 @@ export async function GET(req: NextRequest) {
       isFree: params.isFree === "true" ? true : params.isFree === "false" ? false : undefined,
     })
 
-    const { grade, subject, contentType, language, isFree, search, page = 1, limit = 12 } = filters.data || {}
+    if (!filters.success) return NextResponse.json({ error: "Filtres invalides" }, { status: 400 })
+    const { grade, subject, contentType, language, isFree, search, page = 1, limit = 12 } = filters.data
 
     // Keep filtering portable across the supported PostgreSQL deployment.
     const where: Record<string, unknown> = {
       status: "PUBLISHED",
+      assets: { some: { status: "READY", assetRole: "PRIMARY" } },
       ...(grade && { grade }),
       ...(subject && { subject }),
       ...(contentType && { contentType }),
@@ -29,6 +31,7 @@ export async function GET(req: NextRequest) {
         OR: [
           { titleFr: { contains: search } },
           { titleAr: { contains: search } },
+          { displayTitle: { contains: search } },
           { descriptionFr: { contains: search } },
           { descriptionAr: { contains: search } },
           { titleEn: { contains: search } },
@@ -64,7 +67,10 @@ export async function POST(req: NextRequest) {
     if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     const body = await req.json()
-    const parsed = createContentSchema.safeParse(body)
+    if (["youtubeUrl", "pdfUrl", "gifUrl", "thumbnailUrl", "fileUrls"].some((key) => typeof body?.[key] === "string" && body[key].trim())) {
+      return NextResponse.json({ error: "Les médias doivent être importés via le pipeline sécurisé Drive" }, { status: 400 })
+    }
+    const parsed = createContentSchema.safeParse({ ...body, status: "DRAFT" })
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
     const priceMillis = parsed.data.isFree
@@ -73,8 +79,35 @@ export async function POST(req: NextRequest) {
     if (!parsed.data.isFree && (priceMillis == null || !Number.isSafeInteger(priceMillis) || priceMillis <= 0)) {
       return NextResponse.json({ error: "Un contenu payant doit avoir un prix positif" }, { status: 400 })
     }
+    const data = parsed.data
+    const titleAr = data.titleAr || (data.primaryLanguage === "AR" ? data.displayTitle : "")
+    const titleFr = data.titleFr || (data.primaryLanguage === "FR" ? data.displayTitle : "")
+    const titleEn = data.titleEn || (data.primaryLanguage === "EN" ? data.displayTitle : undefined)
     const content = await prisma.content.create({
-      data: { ...parsed.data, priceMillis, price: priceMillis == null ? null : priceMillis / 1_000, uploadedById: session.user.id },
+      data: {
+        displayTitle: data.displayTitle,
+        primaryLanguage: data.primaryLanguage,
+        titleAr,
+        titleFr,
+        titleEn,
+        descriptionAr: data.descriptionAr,
+        descriptionFr: data.descriptionFr,
+        descriptionEn: data.descriptionEn,
+        grade: data.grade || "",
+        subject: data.subject || "",
+        contentType: data.contentType,
+        language: data.language === "MULTI" ? data.primaryLanguage : data.language,
+        audience: data.audience,
+        category: data.category,
+        collectionKey: data.collectionKey,
+        storyKey: data.storyKey,
+        editionLabel: data.editionLabel,
+        isFree: data.isFree,
+        priceMillis,
+        price: priceMillis == null ? null : priceMillis / 1_000,
+        status: "DRAFT",
+        uploadedById: session.user.id,
+      },
     })
     return NextResponse.json(content, { status: 201 })
   } catch (error) {

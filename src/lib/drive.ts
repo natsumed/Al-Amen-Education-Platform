@@ -128,6 +128,28 @@ export async function listDriveTree(rootId = driveMastersFolderId()) {
   return output
 }
 
+export type DriveLibraryEntry = (DriveFile & { relativePath: string; kind: "FILE" | "FOLDER" })
+
+/** Returns a safe admin-facing index of the configured private masters tree. */
+export async function listDriveLibrary(rootId = driveMastersFolderId()) {
+  if (!rootId) throw new Error("GOOGLE_DRIVE_ROOT_FOLDER_ID_REQUIRED")
+  const output: DriveLibraryEntry[] = []
+  const visit = async (folderId: string, relativePath: string, depth: number): Promise<void> => {
+    if (depth > 12) throw new Error("GOOGLE_DRIVE_TREE_TOO_DEEP")
+    for (const file of await listDriveChildren(folderId)) {
+      const nextPath = relativePath ? `${relativePath}/${file.name}` : file.name
+      if (file.mimeType === "application/vnd.google-apps.folder") {
+        output.push({ ...file, relativePath: nextPath, kind: "FOLDER" })
+        await visit(file.id, nextPath, depth + 1)
+      } else {
+        output.push({ ...file, relativePath: nextPath, kind: "FILE" })
+      }
+    }
+  }
+  await visit(rootId, "", 0)
+  return output
+}
+
 export async function downloadDriveFile(fileId: string) {
   const response = await fetch(`${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media`, {
     headers: { Authorization: `Bearer ${await accessToken()}` },

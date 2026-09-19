@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,12 +13,13 @@ import { Pencil, Trash2, Plus, Sparkles, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 
 export default function AdminContentPage() {
+  const router = useRouter()
   const [contents, setContents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({})
   const [jobs, setJobs] = useState<any[]>([])
   const [intakes, setIntakes] = useState<any[]>([])
-  const [submittingAi, setSubmittingAi] = useState(false)
+  const [configStatus, setConfigStatus] = useState<{ ready: boolean; checks: Record<string, boolean> } | null>(null)
 
   const fetchJobs = async () => {
     const res = await fetch("/api/admin/content/ingestions", { cache: "no-store" })
@@ -32,7 +34,7 @@ export default function AdminContentPage() {
   const fetchContent = async (f: Record<string, string> = {}) => {
     setLoading(true)
     const q = new URLSearchParams(f).toString()
-    const res = await fetch(`/api/content?${q}&limit=50`)
+    const res = await fetch(`/api/admin/content?${q}&limit=50`, { cache: "no-store" })
     const data = await res.json()
     setContents(data.items || [])
     setLoading(false)
@@ -40,25 +42,9 @@ export default function AdminContentPage() {
 
   useEffect(() => { fetchContent(filters as any) }, [filters])
   useEffect(() => { void fetchJobs(); void fetchIntakes() }, [])
+  useEffect(() => { fetch("/api/admin/content/config-status", { cache: "no-store" }).then((res) => res.ok ? res.json() : null).then((data) => { if (data) setConfigStatus(data) }).catch(() => undefined) }, [])
 
-  const createAiDraft = async () => {
-    setSubmittingAi(true)
-    try {
-      const res = await fetch("/api/admin/content/intakes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceType: "DRIVE_ROOT" }),
-      })
-      const data = await res.json()
-      if (!res.ok && res.status !== 202) throw new Error(data.error || "Erreur AI")
-      toast.success(`Bibliothèque analysée: ${data.created || 0} nouveaux fichiers catalogués`)
-      await fetchIntakes()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erreur AI")
-    } finally {
-      setSubmittingAi(false)
-    }
-  }
+  const createAiDraft = () => { router.push("/admin/content/new") }
 
   const intakeAction = async (id: string, action: "approve" | "retry" | "reject") => {
     const reason = action === "reject" ? window.prompt("Motif du rejet (obligatoire)") : null
@@ -99,12 +85,13 @@ export default function AdminContentPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" />Assistant d&apos;ingestion sécurisé</CardTitle>
           <CardDescription>
-            Le worker scanne uniquement le dossier Drive privé 01_Masters configuré sur le serveur. L&apos;IA prépare des métadonnées en arabe, français et anglais; rien n&apos;est publié sans validation humaine et traitement sécurisé.
+            Sélectionnez un fichier ou un dossier depuis Drive privé 01_Masters. L&apos;IA prépare les métadonnées en arabe, français et anglais; rien n&apos;est publié sans validation humaine et traitement sécurisé.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button onClick={createAiDraft} disabled={submittingAi}>
-            <Sparkles className="h-4 w-4 mr-2" />{submittingAi ? "Analyse..." : "Scanner la bibliothèque privée"}
+          {configStatus && !configStatus.ready && <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Configuration incomplète: Drive, OpenAI, scanner, outils PDF, stockage privé et worker doivent être prêts avant le traitement final.</div>}
+          <Button onClick={createAiDraft}>
+            <Sparkles className="h-4 w-4 mr-2" />Importer ou créer un brouillon
           </Button>
           {intakes.length > 0 && (
             <div className="space-y-2 pt-2">
@@ -163,7 +150,7 @@ export default function AdminContentPage() {
               <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Chargement...</TableCell></TableRow>
             ) : contents.map((c) => (
               <TableRow key={c.id}>
-                <TableCell className="font-medium max-w-[200px] truncate">{c.titleFr}</TableCell>
+                <TableCell className="font-medium max-w-[200px] truncate">{c.displayTitle || c.titleFr || c.titleAr || c.titleEn || "Sans titre"}</TableCell>
                 <TableCell>{contentTypeLabel(c.contentType)}</TableCell>
                 <TableCell>{gradeLabel(c.grade)}</TableCell>
                 <TableCell><Badge variant={c.isFree ? "success" : "warning"}>{c.isFree ? "Gratuit" : "Premium"}</Badge></TableCell>

@@ -19,5 +19,7 @@ export default defineConfig([
     "coverage/**",
     "mobile/**",
     "public/downloads/**",
+    ".tmp-*/**",
+    "mobile-android-*/**",
   ]),
 ])

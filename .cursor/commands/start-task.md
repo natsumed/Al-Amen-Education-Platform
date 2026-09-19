@@ -1,0 +1,1 @@
+Read AGENTS.md, docs/PROJECT_STATE.md, docs/ARCHITECTURE.md, docs/agent-workflow.md, and the assigned GitHub issue. Check git status and branch. Summarize the acceptance criteria, touched areas, security risks, tests, migration/rollback needs, and any missing external credential/provider gate before editing.

@@ -3,11 +3,11 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { getRequestUser } from "@/lib/request-auth"
 import { encryptSecret } from "@/lib/security-crypto"
-import { classifyDrivePath, detectDriveLanguage, driveConfigured, driveMastersFolderId, hashDriveId, listDriveTree } from "@/lib/drive"
+import { classifyDrivePath, detectDriveLanguage, driveConfigured, driveMastersFolderId, hashDriveId, listDriveLibrary, listDriveTree, type DriveFile } from "@/lib/drive"
 
 const scanSchema = z.object({
   sourceType: z.enum(["DRIVE_ROOT", "DRIVE_FOLDER", "DRIVE_FILE"]).default("DRIVE_ROOT"),
-  sourceId: z.string().trim().min(10).max(200).optional(),
+  sourceId: z.string().trim().min(3).max(200).optional(),
 })
 
 const supportedMimeTypes = new Set([
@@ -20,7 +20,8 @@ const supportedMimeTypes = new Set([
 ])
 
 function publicIntake<T extends { sourceRefEncrypted?: string | null }>(intake: T) {
-  const { sourceRefEncrypted: _sourceRef, ...safe } = intake
+  const { sourceRefEncrypted, ...safe } = intake
+  void sourceRefEncrypted
   const withSize = safe as typeof safe & { sizeBytes?: bigint | number | null }
   return {
     ...withSize,
@@ -48,19 +49,30 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid Drive scan request" }, { status: 400 })
 
   const mastersRootId = driveMastersFolderId()
-  if (parsed.data.sourceType !== "DRIVE_ROOT" && parsed.data.sourceId !== mastersRootId) {
-    return NextResponse.json({ error: "Only the configured private masters folder may be scanned" }, { status: 403 })
-  }
+  let candidates: Array<DriveFile & { relativePath: string }> = []
 
-  let files
   try {
-    files = await listDriveTree(mastersRootId)
+    const library = await listDriveLibrary(mastersRootId)
+    if (parsed.data.sourceType === "DRIVE_ROOT") {
+      candidates = await listDriveTree(mastersRootId)
+    } else {
+      const selected = library.find((entry) => entry.id === parsed.data.sourceId)
+      if (!selected) return NextResponse.json({ error: "La source n'appartient pas à la bibliothèque privée" }, { status: 403 })
+      if (parsed.data.sourceType === "DRIVE_FOLDER" && selected.kind !== "FOLDER") return NextResponse.json({ error: "La source sélectionnée n'est pas un dossier" }, { status: 400 })
+      if (parsed.data.sourceType === "DRIVE_FILE" && selected.kind !== "FILE") return NextResponse.json({ error: "La source sélectionnée n'est pas un fichier" }, { status: 400 })
+      if (selected.kind === "FILE") {
+        candidates = [{ ...selected, relativePath: selected.relativePath }]
+      } else {
+        const children = await listDriveTree(selected.id)
+        candidates = children.map((file) => ({ ...file, relativePath: `${selected.relativePath}/${file.relativePath}` }))
+      }
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "DRIVE_SCAN_FAILED"
     return NextResponse.json({ error: "Drive scan failed", code: message }, { status: 502 })
   }
 
-  const candidates = files.filter((file) => supportedMimeTypes.has(file.mimeType))
+  candidates = candidates.filter((file) => supportedMimeTypes.has(file.mimeType))
   let created = 0
   let existing = 0
   for (const file of candidates) {

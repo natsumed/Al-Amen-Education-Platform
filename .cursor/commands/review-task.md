@@ -1,0 +1,1 @@
+Review the current diff against the assigned issue. Check authorization, secret leakage, source-media leakage, migrations, tests, rollback, and documentation. Report findings by severity and do not modify files.

@@ -59,3 +59,19 @@ export async function PUT(req: NextRequest) {
   await prisma.auditEvent.create({ data: { userId: user.id, action: "MFA_ENABLED", targetType: "User", targetId: user.id } })
   return NextResponse.json({ enabled: true, recoveryCodes }, { headers: { "Cache-Control": "private, no-store" } })
 }
+
+export async function DELETE(req: NextRequest) {
+  const user = await getRequestUser(req, { allowPending: true })
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (["ADMIN", "TEACHER"].includes(user.role)) return NextResponse.json({ error: "MFA is required for privileged accounts" }, { status: 403 })
+  const body = await req.json().catch(() => ({}))
+  const currentCode = typeof body.currentCode === "string" ? body.currentCode : ""
+  if (!currentCode || !(await verifyMfaCode(user.id, currentCode))) return NextResponse.json({ error: "Current MFA code required" }, { status: 403 })
+  await prisma.$transaction(async (tx) => {
+    await tx.mfaCredential.deleteMany({ where: { userId: user.id } })
+    await tx.user.update({ where: { id: user.id }, data: { sessionVersion: { increment: 1 } } })
+    await tx.deviceSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } })
+    await tx.auditEvent.create({ data: { userId: user.id, action: "MFA_DISABLED", targetType: "User", targetId: user.id } })
+  })
+  return NextResponse.json({ enabled: false })
+}

@@ -13,24 +13,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   const proposal = contentProposalSchema.safeParse(job.proposal)
   if (!proposal.success) return NextResponse.json({ error: "Proposition AI invalide" }, { status: 422 })
-  const grade = proposal.data.grade
-  if (!grade) return NextResponse.json({ error: "Une année scolaire doit être confirmée avant publication" }, { status: 422 })
+  const displayTitle = proposal.data.titleFr || proposal.data.titleAr || proposal.data.titleEn
+  if (!displayTitle) return NextResponse.json({ error: "Un titre doit être confirmé avant approbation" }, { status: 422 })
 
   const kind = proposal.data.contentType === "BOOK" ? "DOCUMENT" : "VIDEO"
   const result = await prisma.$transaction(async (tx) => {
     const content = await tx.content.create({
       data: {
-        titleAr: proposal.data.titleAr,
-        titleFr: proposal.data.titleFr,
+        displayTitle,
+        primaryLanguage: proposal.data.language,
+        titleAr: proposal.data.titleAr || "",
+        titleFr: proposal.data.titleFr || "",
         titleEn: proposal.data.titleEn,
         descriptionAr: proposal.data.descriptionAr,
         descriptionFr: proposal.data.descriptionFr,
         descriptionEn: proposal.data.descriptionEn,
-        grade,
-        subject: proposal.data.subject,
+        grade: proposal.data.grade || "",
+        subject: proposal.data.subject || "",
         contentType: proposal.data.contentType,
         language: proposal.data.language,
         audience: proposal.data.audience,
+        category: proposal.data.category,
         collectionKey: proposal.data.collectionKey,
         storyKey: proposal.data.storyKey,
         editionLabel: proposal.data.editionLabel,

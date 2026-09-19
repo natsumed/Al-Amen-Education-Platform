@@ -8,16 +8,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params
   const intake = await prisma.contentIntake.findUnique({ where: { id } })
   if (!intake || intake.status !== "REVIEW_REQUIRED") return NextResponse.json({ error: "Intake is not ready for approval" }, { status: 409 })
-  if (!intake.sourceRefEncrypted || !intake.titleAr || !intake.titleFr || !intake.grade || !intake.subject || !intake.category || !intake.audience || !intake.language) {
-    return NextResponse.json({ error: "Complete title, language, category, audience, subject, and grade before approval" }, { status: 422 })
+  if (!intake.sourceRefEncrypted || !(intake.titleAr || intake.titleFr || intake.titleEn) || !intake.category || !intake.audience || !intake.language) {
+    return NextResponse.json({ error: "Complete at least one title, language, category, and audience before approval" }, { status: 422 })
   }
   if (intake.category === "INTERNAL_PRODUCTION" || intake.category === "REVIEW_REQUIRED") {
     return NextResponse.json({ error: "This item must remain internal or be reclassified before approval" }, { status: 422 })
   }
-  const titleAr = intake.titleAr
-  const titleFr = intake.titleFr
-  const grade = intake.grade
-  const subject = intake.subject
+  const displayTitle = intake.titleFr || intake.titleAr || intake.titleEn || "Sans titre"
+  const titleAr = intake.titleAr || ""
+  const titleFr = intake.titleFr || ""
   const category = intake.category
   const audience = intake.audience
   const language = intake.language
@@ -25,14 +24,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const result = await prisma.$transaction(async (tx) => {
     const content = await tx.content.create({
       data: {
+        displayTitle,
+        primaryLanguage: language || "MULTI",
         titleAr,
         titleFr,
         titleEn: intake.titleEn,
-        grade,
-        subject,
+        grade: intake.grade || "",
+        subject: intake.subject || "",
         contentType: category === "STORYBOOK" ? "BOOK" : "BOOK",
         language,
         audience,
+        category,
         collectionKey: intake.collectionKey,
         storyKey: intake.storyKey,
         editionLabel: intake.editionLabel,

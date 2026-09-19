@@ -86,7 +86,9 @@ export async function processContentIntake(intakeId: string) {
           detectedLanguage: intake.language,
         })
         proposal = result.proposal
-      } catch {
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "AI_ANALYSIS_FAILED"
+        if (code === "OPENAI_NOT_CONFIGURED") throw error
         proposal = null
       }
       await prisma.contentIntake.update({
@@ -122,7 +124,11 @@ export async function processContentIntake(intakeId: string) {
     const code = error instanceof Error ? error.message : "CONTENT_PROCESSING_FAILED"
     await prisma.contentIntake.update({
       where: { id: intake.id },
-      data: { status: code === "CONTENT_SCANNER_NOT_CONFIGURED" ? "WAITING_FOR_SCAN" : "FAILED", errorCode: code, errorMessage: "The source could not be safely processed." },
+      data: {
+        status: code === "CONTENT_SCANNER_NOT_CONFIGURED" ? "WAITING_FOR_SCAN" : code === "OPENAI_NOT_CONFIGURED" ? "WAITING_FOR_CONFIGURATION" : "FAILED",
+        errorCode: code,
+        errorMessage: code === "OPENAI_NOT_CONFIGURED" ? "AI configuration is required before this intake can be completed." : "The source could not be safely processed.",
+      },
     })
     return false
   }

@@ -1,0 +1,36 @@
+name: Feature or fix
+description: Track one coherent implementation task
+title: ""
+labels: []
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome and acceptance criteria
+      description: Describe the user-visible result and exact evidence required.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - content
+        - auth-security
+        - mobile
+        - payments
+        - infrastructure
+        - documentation
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Data, security, migration, and rollback risks
+    validations:
+      required: true
+  - type: textarea
+    id: external-gates
+    attributes:
+      label: External gates or secret aliases required
+      description: Use aliases only. Never paste secret values.

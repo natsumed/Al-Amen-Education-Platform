@@ -22,7 +22,8 @@ async function resolveMediaUrl(value: string | null | undefined): Promise<string
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (nativeContentOnly()) {
+    const isProduction = (process.env as Record<string, string | undefined>).NODE_ENV === "production"
+    if (nativeContentOnly() || isProduction) {
       return NextResponse.json({ error: "Protected content requires the Amenallah app", code: "NATIVE_APP_REQUIRED" }, { status: 403, headers: { "Cache-Control": "private, no-store" } })
     }
     if (process.env.SECURE_CONTENT_ENABLED === "true") {

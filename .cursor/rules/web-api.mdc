@@ -1,0 +1,7 @@
+---
+description: Web and API rules
+globs: src/**/*.ts,src/**/*.tsx,prisma/**/*.prisma
+alwaysApply: false
+---
+
+Validate all mutation input server-side. Treat browser middleware as navigation protection only; enforce authorization in the route/service. Never return Drive URLs, raw media URLs, provider tokens, or reusable playback credentials. New content is draft-first and public content requires a ready secure asset. Use integer millimes for payments.

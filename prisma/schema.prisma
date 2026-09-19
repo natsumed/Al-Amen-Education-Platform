@@ -220,8 +220,10 @@ model SubscriptionGrant {
 
 model Content {
   id            String   @id @default(uuid())
-  titleAr       String
-  titleFr       String
+  displayTitle  String   @default("")
+  primaryLanguage String @default("MULTI")
+  titleAr       String   @default("")
+  titleFr       String   @default("")
   titleEn       String?
   descriptionAr String?
   descriptionFr String?
@@ -234,6 +236,7 @@ model Content {
   collectionKey String?
   storyKey      String?
   editionLabel  String?
+  category      String?
   isFree        Boolean  @default(true)
   price         Float?
   priceMillis   Int?
@@ -242,7 +245,7 @@ model Content {
   pdfUrl        String?
   gifUrl        String?
   fileUrls      String   @default("[]")
-  status        String   @default("PUBLISHED")
+  status        String   @default("DRAFT")
   uploadedById  String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -258,6 +261,7 @@ model Content {
   @@index([grade, subject])
   @@index([contentType])
   @@index([status])
+  @@index([category, status])
 }
 
 model Review {

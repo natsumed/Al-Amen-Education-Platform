@@ -102,6 +102,19 @@ export default function SettingsPage() {
     toast.success("Double authentification activée. Reconnectez-vous avec votre code.")
   }
 
+  const disableMfa = async () => {
+    const response = await fetch("/api/security/mfa", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentCode: mfaCode }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) return toast.error(data.error || "Désactivation impossible")
+    setMfaStatus({ required: Boolean(mfaStatus?.required), enabled: false })
+    setMfaCode("")
+    toast.success(isAr ? "تم إيقاف المصادقة الثنائية" : "Double authentification désactivée")
+  }
+
   const saveProfile = async () => {
     setSaving(true)
     try {
@@ -340,7 +353,10 @@ export default function SettingsPage() {
                       <CardDescription>{mfaStatus?.required ? (isAr ? "مطلوبة لهذا الحساب" : "Obligatoire pour ce compte") : (isAr ? "حماية إضافية اختيارية" : "Protection supplémentaire facultative")}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {mfaStatus?.enabled ? <p className="text-sm text-emerald-600">{isAr ? "مفعّلة" : "Activée"}</p> : !mfaSecret ? (
+                       {mfaStatus?.enabled ? <>
+                         <p className="text-sm text-emerald-600">{isAr ? "مفعّلة" : "Activée"}</p>
+                         {user?.role === "STUDENT" || user?.role === "PARENT" ? <><Input inputMode="numeric" autoComplete="one-time-code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} placeholder="Code actuel" maxLength={6} /><Button variant="outline" onClick={disableMfa}>{isAr ? "إيقاف" : "Désactiver"}</Button></> : null}
+                       </> : !mfaSecret ? (
                         <Button onClick={beginMfa}>{isAr ? "بدء الإعداد" : "Configurer l'application d'authentification"}</Button>
                       ) : (
                         <>

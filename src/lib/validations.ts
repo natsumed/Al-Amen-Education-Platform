@@ -82,31 +82,27 @@ export const changePasswordSchema = z
   })
 
 export const createContentSchema = z.object({
-  titleAr: z.string().min(2, "Arabic title required"),
-  titleFr: z.string().min(2, "French title required"),
-  titleEn: z.string().min(2).optional(),
+  displayTitle: z.string().trim().min(2, "A primary title is required").max(180),
+  primaryLanguage: z.enum(["AR", "FR", "EN", "MULTI"]).default("MULTI"),
+  titleAr: z.string().trim().max(180).optional().default(""),
+  titleFr: z.string().trim().max(180).optional().default(""),
+  titleEn: z.string().trim().max(180).optional(),
   descriptionAr: z.string().optional(),
   descriptionFr: z.string().optional(),
   descriptionEn: z.string().optional(),
-  grade: z.enum(["GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4", "GRADE_5", "GRADE_6"]),
-  subject: z.enum(["ARABIC", "FRENCH", "MATH", "SCIENCE", "ISLAMIC", "HISTORY", "CIVIC", "ARTS", "ENGLISH"]),
+  grade: z.enum(["GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4", "GRADE_5", "GRADE_6"]).optional(),
+  subject: z.enum(["ARABIC", "FRENCH", "MATH", "SCIENCE", "ISLAMIC", "HISTORY", "CIVIC", "ARTS", "ENGLISH"]).optional(),
   contentType: z.enum(["COURSE", "BOOK", "SERIES", "ANIMATION"]),
   language: z.enum(["AR", "FR", "EN", "MULTI"]).default("MULTI"),
   audience: z.enum(["LEARNER", "TEACHER", "INTERNAL"]).default("LEARNER"),
+  category: z.enum(["STORYBOOK", "STUDENT_WORKBOOK", "TEACHER_RESOURCE", "INTERNAL_PRODUCTION", "REVIEW_REQUIRED"]).optional(),
   collectionKey: z.string().trim().max(80).optional(),
   storyKey: z.string().trim().max(80).optional(),
   editionLabel: z.string().trim().max(80).optional(),
   isFree: z.boolean().default(true),
   price: z.number().min(0).optional(),
   priceMillis: z.number().int().positive().optional(),
-  thumbnailUrl: optionalUrl,
-  /** YouTube or Drive video link (Drive links normalized at serve time) */
-  youtubeUrl: optionalUrl,
-  /** PDF / book — Drive share link or direct URL (filled when Drive is ready) */
-  pdfUrl: optionalUrl,
-  /** Animated story — Drive / GIF / WebM URL */
-  gifUrl: optionalUrl,
-  status: z.enum(["PUBLISHED", "DRAFT"]).default("PUBLISHED"),
+  status: z.literal("DRAFT").default("DRAFT"),
 })
 
 export const parentLinkRespondSchema = z.object({

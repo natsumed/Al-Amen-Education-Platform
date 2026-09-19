@@ -23,7 +23,8 @@ function validSource(input: z.infer<typeof createIngestionSchema>) {
 }
 
 function publicJob<T extends { sourceRefEncrypted?: string }>(job: T) {
-  const { sourceRefEncrypted: _secret, ...safe } = job
+  const { sourceRefEncrypted, ...safe } = job
+  void sourceRefEncrypted
   return safe
 }
 
@@ -46,6 +47,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getRequestUser(req)
   if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  return NextResponse.json({ error: "Cette ancienne route est désactivée. Utilisez la sélection Drive privée de /admin/content/new.", code: "USE_PRIVATE_DRIVE_INTAKE" }, { status: 410 })
+
+  /* Legacy implementation retained below for one rollback window; it is unreachable
+   * and must not accept arbitrary Drive URLs or direct uploads. */
   const limit = await ingestionLimiter.check(user.id)
   if (!limit.allowed) return NextResponse.json({ error: "Limite AI atteinte" }, { status: 429 })
 

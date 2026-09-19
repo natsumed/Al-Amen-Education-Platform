@@ -17,14 +17,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         reviews: {
           include: { user: { select: { fullName: true, avatarUrl: true } } },
         },
+        assets: { where: { assetRole: "PRIMARY", status: "READY" }, select: { id: true, kind: true, deliveryProvider: true } },
       },
     })
     if (!content) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    const isAdmin = user?.role === "ADMIN"
+    const hasReadyAsset = content.assets.some((asset) => asset.deliveryProvider === "VDOCIPHER" || asset.deliveryProvider === "SUPABASE_TILES")
+    if (!isAdmin && (content.status !== "PUBLISHED" || !hasReadyAsset)) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     const access = await getContentAccessInfo(user?.id || null, user?.role || null, id)
     // Never expose external media URLs to anonymous visitors. Even free media
     // is resolved through the authenticated media endpoint below.
-    const safe = sanitizeContentForAccess(content, Boolean(user) && access.canAccess)
+    const { assets: _assets, ...contentWithoutAssets } = content
+    void _assets
+    const safe = sanitizeContentForAccess(contentWithoutAssets, Boolean(user) && access.canAccess)
 
     return NextResponse.json({ ...safe, access, mediaLocked: !user || !access.canAccess, deliveryMode: process.env.MOBILE_NATIVE_CONTENT_ONLY === "true" ? "NATIVE_APP" : "MIGRATION" })
   } catch {

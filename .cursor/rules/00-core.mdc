@@ -1,0 +1,6 @@
+---
+description: Shared Amenallah safety and collaboration contract
+alwaysApply: true
+---
+
+Read `AGENTS.md`, `docs/PROJECT_STATE.md`, `docs/ARCHITECTURE.md`, and `docs/agent-workflow.md` before editing. Work from the assigned issue and branch. Preserve unrelated work. Never write or reveal secrets. Never deploy directly to production. Add tests and update the relevant ADR when changing security, schema, content delivery, payment, or deployment behavior.

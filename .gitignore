@@ -16,7 +16,9 @@
 # misc
 .DS_Store
 *.pem
-.opencode/
+.opencode/*
+!.opencode/agents/
+!.opencode/agents/*.md
 
 # debug
 npm-debug.log*
